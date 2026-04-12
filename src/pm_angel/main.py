@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -29,14 +29,7 @@ logger = logging.getLogger(__name__)
 settings: Settings = Settings.from_env()
 data_api = DataApiClient(settings.data_api_host)
 gamma_api = GammaApiClient(settings.gamma_api_host)
-clob = ClobWrapper(
-    host=settings.clob_host,
-    private_key=settings.private_key,
-    chain_id=settings.chain_id,
-    api_key=settings.clob_api_key,
-    api_secret=settings.clob_api_secret,
-    api_passphrase=settings.clob_api_passphrase,
-)
+clob: ClobWrapper | None = None
 risk_manager = RiskManager(settings)
 discovery = TraderDiscovery(data_api, gamma_api)
 poller: ActivityPoller | None = None
@@ -47,6 +40,22 @@ BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
+def _rebuild_clob() -> None:
+    """Rebuild CLOB client with current settings credentials."""
+    global clob
+    if settings.has_credentials:
+        clob = ClobWrapper(
+            host=settings.clob_host,
+            private_key=settings.private_key,
+            chain_id=settings.chain_id,
+            api_key=settings.clob_api_key,
+            api_secret=settings.clob_api_secret,
+            api_passphrase=settings.clob_api_passphrase,
+        )
+    else:
+        clob = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logging.basicConfig(
@@ -54,6 +63,11 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     await init_db(settings.db_path)
+    # Load credentials from DB
+    await settings.load_from_db()
+    _rebuild_clob()
+    # Auto-populate suggested traders on first launch
+    await _auto_suggest_traders()
     logger.info("PM Angel started on %s:%d", settings.host, settings.port)
     yield
     await _stop_bot()
@@ -71,6 +85,9 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
+    # Redirect to setup if no credentials
+    if not settings.has_private_key:
+        return RedirectResponse("/settings", status_code=302)
     stats = await _get_stats()
     bets = await _get_bets()
     return templates.TemplateResponse(request, "dashboard.html", context={
@@ -85,8 +102,10 @@ async def settings_page(request: Request):
     return templates.TemplateResponse(request, "settings.html", context={
         "active_page": "settings",
         "settings": settings,
+        "has_private_key": settings.has_private_key,
         "has_credentials": settings.has_credentials,
         "bot_running": poller is not None and poller.is_running,
+        "pk_masked": _mask_key(settings.private_key) if settings.private_key else "",
     })
 
 
@@ -112,7 +131,7 @@ async def status_bar(request: Request):
     running = poller is not None and poller.is_running
     balance = None
     positions = 0
-    if running and settings.has_credentials:
+    if running and clob:
         try:
             balance = await clob.get_balance()
         except Exception:
@@ -166,6 +185,75 @@ async def leaderboard_data(
     return HTMLResponse("\n".join(rows))
 
 
+# --- Credentials Setup (from web UI) ---
+
+@app.post("/api/setup/private-key", response_class=HTMLResponse)
+async def save_private_key(private_key: str = Form(...)):
+    pk = private_key.strip()
+    # Validate hex format
+    if not pk.startswith("0x"):
+        pk = "0x" + pk
+    try:
+        # Verify it's valid hex
+        bytes.fromhex(pk[2:])
+    except ValueError:
+        return HTMLResponse(
+            '<p class="text-warning">Cle invalide : doit etre une chaine hexadecimale de 64 caracteres (0x...)</p>'
+        )
+    if len(pk) != 66:
+        return HTMLResponse(
+            f'<p class="text-warning">Cle invalide : longueur {len(pk)} au lieu de 66 caracteres (0x + 64 hex)</p>'
+        )
+
+    settings.private_key = pk
+    await settings.save_to_db("private_key", pk)
+    logger.info("Private key saved to database")
+
+    return HTMLResponse(
+        '<p class="text-success">Cle privee sauvegardee !</p>'
+        '<p class="help-text">Cliquez maintenant sur "Generer Credentials API" pour obtenir vos cles CLOB.</p>'
+    )
+
+
+@app.post("/api/setup/derive-keys", response_class=HTMLResponse)
+async def derive_keys():
+    if not settings.has_private_key:
+        return HTMLResponse(
+            '<p class="text-warning">Saisissez d\'abord votre cle privee ci-dessus.</p>'
+        )
+    try:
+        # Create a temporary CLOB client just for key derivation
+        temp_clob = ClobWrapper(
+            host=settings.clob_host,
+            private_key=settings.private_key,
+            chain_id=settings.chain_id,
+            api_key="",
+            api_secret="",
+            api_passphrase="",
+        )
+        creds = await temp_clob.derive_api_creds()
+
+        # Save to settings and DB
+        settings.clob_api_key = creds["api_key"]
+        settings.clob_api_secret = creds["api_secret"]
+        settings.clob_api_passphrase = creds["api_passphrase"]
+        await settings.save_to_db("clob_api_key", creds["api_key"])
+        await settings.save_to_db("clob_api_secret", creds["api_secret"])
+        await settings.save_to_db("clob_api_passphrase", creds["api_passphrase"])
+
+        # Rebuild CLOB client with new credentials
+        _rebuild_clob()
+
+        logger.info("API credentials derived and saved")
+        return HTMLResponse(
+            '<p class="text-success">Credentials API generees et sauvegardees automatiquement !</p>'
+            '<p class="help-text">Vous pouvez maintenant demarrer le bot.</p>'
+        )
+    except Exception as exc:
+        logger.error("Key derivation failed: %s", exc)
+        return HTMLResponse(f'<p class="text-warning">Erreur: {exc}</p>')
+
+
 # --- Bot Control ---
 
 @app.post("/api/bot/start")
@@ -175,15 +263,23 @@ async def start_bot():
         return JSONResponse({"status": "already_running"})
 
     if not settings.has_credentials:
-        return JSONResponse({"error": "No API credentials configured"}, status_code=400)
+        return JSONResponse(
+            {"error": "Credentials API non configurees. Allez dans Settings."},
+            status_code=400,
+        )
+
+    if not clob:
+        _rebuild_clob()
+    if not clob:
+        return JSONResponse({"error": "Impossible de creer le client CLOB"}, status_code=400)
 
     # Load tracked traders from DB
     traders = await _get_tracked_addresses()
     if not traders:
-        traders = settings.target_traders
-
-    if not traders:
-        return JSONResponse({"error": "No target traders configured"}, status_code=400)
+        return JSONResponse(
+            {"error": "Aucun trader suivi. Ajoutez des traders depuis Settings ou Leaderboard."},
+            status_code=400,
+        )
 
     poller = ActivityPoller(data_api, gamma_api, traders, settings.poll_interval_seconds)
     executor = TradeExecutor(clob, risk_manager, gamma_api, settings)
@@ -221,7 +317,8 @@ async def _price_update_loop():
     while True:
         try:
             await asyncio.sleep(60)
-            await update_prices(clob)
+            if clob:
+                await update_prices(clob)
         except asyncio.CancelledError:
             break
         except Exception:
@@ -289,17 +386,31 @@ async def remove_trader(request: Request, address: str):
     return await _render_traders_list(request)
 
 
+@app.post("/api/traders/refresh-suggestions", response_class=HTMLResponse)
+async def refresh_suggestions():
+    """Fetch top traders from leaderboard and add them automatically."""
+    count = await _auto_suggest_traders(force=True)
+    return HTMLResponse(
+        f'<p class="text-success">{count} traders ajoutes depuis le leaderboard !</p>'
+    )
+
+
 async def _render_traders_list(request: Request) -> HTMLResponse:
     traders = await _get_tracked_traders()
     if not traders:
-        return HTMLResponse('<p class="text-muted" style="padding:1rem 0;">Aucun trader suivi</p>')
+        return HTMLResponse(
+            '<p class="text-muted" style="padding:1rem 0;">Aucun trader suivi. '
+            'Cliquez "Ajouter les meilleurs traders" pour en ajouter automatiquement.</p>'
+        )
 
     html_parts = []
     for t in traders:
+        pnl_class = "positive" if t.pnl >= 0 else "negative" if t.pnl < 0 else ""
+        pnl_str = f' | PnL: <span class="{pnl_class}">${t.pnl:,.0f}</span>' if t.pnl else ""
         html_parts.append(
             f'<div class="trader-item">'
             f'  <div class="trader-info">'
-            f'    <span class="trader-name">{t.username or "Anonyme"}</span>'
+            f'    <span class="trader-name">{t.username or "Anonyme"}{pnl_str}</span>'
             f'    <span class="trader-address">{t.address}</span>'
             f'  </div>'
             f'  <button class="btn btn-sm btn-danger" '
@@ -320,22 +431,20 @@ async def update_settings(
     position_scale_factor: float = Form(0.1),
     poll_interval_seconds: float = Form(15),
 ):
-    global settings
-    settings = Settings(
-        private_key=settings.private_key,
-        clob_api_key=settings.clob_api_key,
-        clob_api_secret=settings.clob_api_secret,
-        clob_api_passphrase=settings.clob_api_passphrase,
-        target_traders=settings.target_traders,
-        max_position_usd=max_position_usd,
-        max_total_exposure_usd=max_total_exposure_usd,
-        daily_loss_limit_usd=daily_loss_limit_usd,
-        position_scale_factor=position_scale_factor,
-        poll_interval_seconds=poll_interval_seconds,
-        host=settings.host,
-        port=settings.port,
-    )
-    # Update risk manager with new settings
+    settings.max_position_usd = max_position_usd
+    settings.max_total_exposure_usd = max_total_exposure_usd
+    settings.daily_loss_limit_usd = daily_loss_limit_usd
+    settings.position_scale_factor = position_scale_factor
+    settings.poll_interval_seconds = poll_interval_seconds
+
+    # Persist to DB
+    await settings.save_to_db("max_position_usd", str(max_position_usd))
+    await settings.save_to_db("max_total_exposure_usd", str(max_total_exposure_usd))
+    await settings.save_to_db("daily_loss_limit_usd", str(daily_loss_limit_usd))
+    await settings.save_to_db("position_scale_factor", str(position_scale_factor))
+    await settings.save_to_db("poll_interval_seconds", str(poll_interval_seconds))
+
+    # Update risk manager
     risk_manager._max_position_usd = max_position_usd
     risk_manager._max_total_exposure = max_total_exposure_usd
     risk_manager._daily_loss_limit = daily_loss_limit_usd
@@ -344,27 +453,64 @@ async def update_settings(
     return JSONResponse({"status": "saved"})
 
 
-@app.post("/api/setup/derive-keys")
-async def derive_keys():
-    if not settings.private_key:
-        return HTMLResponse(
-            '<p class="text-warning">Renseignez PK dans .env d\'abord</p>'
-        )
+# --- Auto-suggest traders ---
+
+async def _auto_suggest_traders(force: bool = False) -> int:
+    """Automatically add top traders from the leaderboard if none are tracked."""
+    if async_session is None:
+        return 0
+
+    # Check if we already have tracked traders
+    if not force:
+        existing = await _get_tracked_traders()
+        if existing:
+            return 0
+
     try:
-        creds = await clob.derive_api_creds()
-        return HTMLResponse(
-            f'<div class="help-text">'
-            f'<p class="text-success">Credentials generees ! Ajoutez-les dans .env :</p>'
-            f'<code>CLOB_API_KEY={creds["api_key"]}</code><br>'
-            f'<code>CLOB_API_SECRET={creds["api_secret"]}</code><br>'
-            f'<code>CLOB_API_PASSPHRASE={creds["api_passphrase"]}</code>'
-            f'</div>'
+        traders = await discovery.get_top_traders(
+            category="OVERALL",
+            time_period="MONTH",
+            order_by="PNL",
+            limit=10,
+            min_pnl=100,
         )
     except Exception as exc:
-        return HTMLResponse(f'<p class="text-warning">Erreur: {exc}</p>')
+        logger.warning("Could not fetch leaderboard for auto-suggestions: %s", exc)
+        return 0
+
+    count = 0
+    async with async_session() as session:
+        for t in traders[:5]:  # Top 5 traders
+            if not t.address:
+                continue
+            existing = await session.execute(
+                select(TrackedTrader).where(TrackedTrader.address == t.address)
+            )
+            if existing.scalar_one_or_none():
+                continue
+            trader = TrackedTrader(
+                address=t.address,
+                username=t.username,
+                pnl=t.pnl,
+                volume=t.volume,
+                is_active=True,
+            )
+            session.add(trader)
+            count += 1
+        await session.commit()
+
+    if count:
+        logger.info("Auto-added %d traders from leaderboard", count)
+    return count
 
 
 # --- Helpers ---
+
+def _mask_key(key: str) -> str:
+    if len(key) < 10:
+        return "***"
+    return key[:6] + "..." + key[-4:]
+
 
 async def _get_bets() -> list[Bet]:
     if async_session is None:

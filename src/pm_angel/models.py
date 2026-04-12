@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Float, Integer, String, DateTime
+from sqlalchemy import Float, Integer, String, DateTime, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -37,6 +37,14 @@ class Bet(Base):
                 self.amount_usd / self.entry_price
             )
             self.pnl_percent = ((self.current_price - self.entry_price) / self.entry_price) * 100
+
+
+class AppConfig(Base):
+    """Key-value store for app configuration (credentials, settings)."""
+    __tablename__ = "app_config"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
 
 
 class TrackedTrader(Base):

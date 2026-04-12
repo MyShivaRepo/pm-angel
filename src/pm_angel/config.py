@@ -7,7 +7,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-@dataclass(frozen=True)
+CONFIG_KEYS = [
+    "private_key",
+    "clob_api_key",
+    "clob_api_secret",
+    "clob_api_passphrase",
+    "max_position_usd",
+    "max_total_exposure_usd",
+    "daily_loss_limit_usd",
+    "position_scale_factor",
+    "poll_interval_seconds",
+]
+
+
+@dataclass
 class Settings:
     # Wallet / Auth
     private_key: str = ""
@@ -46,24 +59,84 @@ class Settings:
     def has_credentials(self) -> bool:
         return bool(self.private_key and self.clob_api_key)
 
+    @property
+    def has_private_key(self) -> bool:
+        return bool(self.private_key and self.private_key.startswith("0x") and len(self.private_key) == 66)
+
     @classmethod
     def from_env(cls, env_path: str | Path | None = None) -> Settings:
         load_dotenv(env_path or ".env")
-
-        traders_raw = os.getenv("TARGET_TRADERS", "")
-        traders = [t.strip() for t in traders_raw.split(",") if t.strip()]
-
         return cls(
-            private_key=os.getenv("PK", ""),
-            clob_api_key=os.getenv("CLOB_API_KEY", ""),
-            clob_api_secret=os.getenv("CLOB_API_SECRET", ""),
-            clob_api_passphrase=os.getenv("CLOB_API_PASSPHRASE", ""),
-            target_traders=traders,
-            poll_interval_seconds=float(os.getenv("POLL_INTERVAL_SECONDS", "15")),
-            max_position_usd=float(os.getenv("MAX_POSITION_USD", "100")),
-            max_total_exposure_usd=float(os.getenv("MAX_TOTAL_EXPOSURE_USD", "500")),
-            daily_loss_limit_usd=float(os.getenv("DAILY_LOSS_LIMIT_USD", "50")),
-            position_scale_factor=float(os.getenv("POSITION_SCALE_FACTOR", "0.1")),
             host=os.getenv("HOST", "0.0.0.0"),
             port=int(os.getenv("PORT", "8888")),
         )
+
+    async def load_from_db(self) -> None:
+        """Load credentials and settings from database."""
+        from pm_angel.database import async_session
+        from pm_angel.models import AppConfig
+        from sqlalchemy import select
+
+        if async_session is None:
+            return
+
+        async with async_session() as session:
+            result = await session.execute(select(AppConfig))
+            rows = result.scalars().all()
+
+        for row in rows:
+            if row.key == "private_key":
+                self.private_key = row.value
+            elif row.key == "clob_api_key":
+                self.clob_api_key = row.value
+            elif row.key == "clob_api_secret":
+                self.clob_api_secret = row.value
+            elif row.key == "clob_api_passphrase":
+                self.clob_api_passphrase = row.value
+            elif row.key == "max_position_usd":
+                self.max_position_usd = float(row.value)
+            elif row.key == "max_total_exposure_usd":
+                self.max_total_exposure_usd = float(row.value)
+            elif row.key == "daily_loss_limit_usd":
+                self.daily_loss_limit_usd = float(row.value)
+            elif row.key == "position_scale_factor":
+                self.position_scale_factor = float(row.value)
+            elif row.key == "poll_interval_seconds":
+                self.poll_interval_seconds = float(row.value)
+
+    async def save_to_db(self, key: str, value: str) -> None:
+        """Save a single config key to database."""
+        from pm_angel.database import async_session
+        from pm_angel.models import AppConfig
+        from sqlalchemy import select
+
+        if async_session is None:
+            return
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(AppConfig).where(AppConfig.key == key)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                existing.value = value
+            else:
+                session.add(AppConfig(key=key, value=value))
+            await session.commit()
+
+    async def save_all_to_db(self) -> None:
+        """Save all config values to database."""
+        pairs = {
+            "private_key": self.private_key,
+            "clob_api_key": self.clob_api_key,
+            "clob_api_secret": self.clob_api_secret,
+            "clob_api_passphrase": self.clob_api_passphrase,
+            "max_position_usd": str(self.max_position_usd),
+            "max_total_exposure_usd": str(self.max_total_exposure_usd),
+            "daily_loss_limit_usd": str(self.daily_loss_limit_usd),
+            "position_scale_factor": str(self.position_scale_factor),
+            "poll_interval_seconds": str(self.poll_interval_seconds),
+        }
+        for k, v in pairs.items():
+            if v:
+                await self.save_to_db(k, v)

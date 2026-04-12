@@ -3,54 +3,94 @@
 <div class="settings">
     <h1>Configuration</h1>
 
+    <!-- Step 1: Private Key -->
     <section class="settings-section">
-        <h2>Bot</h2>
+        <h2>Etape 1 : Cle privee Polygon</h2>
+        {% if has_private_key %}
+            <p class="text-success">Cle privee configuree : <code>{{ pk_masked }}</code></p>
+            <details style="margin-top: 0.5rem;">
+                <summary class="text-muted" style="cursor: pointer; font-size: 0.85rem;">Modifier la cle</summary>
+                <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML"
+                      style="margin-top: 0.5rem;">
+                    <div class="form-row">
+                        <input type="password" name="private_key" placeholder="0x..." class="input" required>
+                        <button type="submit" class="btn btn-secondary">Mettre a jour</button>
+                    </div>
+                </form>
+                <div id="pk-result"></div>
+            </details>
+        {% else %}
+            <p class="help-text">Saisissez votre cle privee Polygon (wallet avec USDC sur Polygon).</p>
+            <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML">
+                <div class="form-row">
+                    <input type="password" name="private_key" placeholder="0x... (64 caracteres hex)" class="input" required>
+                    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                </div>
+            </form>
+            <div id="pk-result"></div>
+        {% endif %}
+    </section>
+
+    <!-- Step 2: API Credentials -->
+    <section class="settings-section">
+        <h2>Etape 2 : Credentials API Polymarket</h2>
+        {% if has_credentials %}
+            <p class="text-success">Credentials API configurees</p>
+        {% elif has_private_key %}
+            <p class="help-text">Generez vos credentials API a partir de votre cle privee. Un seul clic suffit.</p>
+            <button class="btn btn-primary" hx-post="/api/setup/derive-keys" hx-target="#setup-result">
+                Generer Credentials API
+            </button>
+            <div id="setup-result" style="margin-top: 0.75rem;"></div>
+        {% else %}
+            <p class="text-muted">Configurez d'abord votre cle privee (etape 1).</p>
+        {% endif %}
+    </section>
+
+    <!-- Step 3: Bot Control -->
+    <section class="settings-section">
+        <h2>Etape 3 : Bot</h2>
         <div class="bot-controls">
             {% if bot_running %}
                 <button class="btn btn-danger" hx-post="/api/bot/stop" hx-swap="none"
                         hx-on::after-request="location.reload()">
                     Arreter le bot
                 </button>
-            {% else %}
+                <span class="text-success" style="margin-left: 0.5rem;">Bot en cours d'execution</span>
+            {% elif has_credentials %}
                 <button class="btn btn-primary" hx-post="/api/bot/start" hx-swap="none"
                         hx-on::after-request="location.reload()">
                     Demarrer le bot
                 </button>
+            {% else %}
+                <button class="btn btn-primary" disabled>Demarrer le bot</button>
+                <span class="text-muted" style="margin-left: 0.5rem;">Completez les etapes 1 et 2 d'abord</span>
             {% endif %}
         </div>
     </section>
 
-    <section class="settings-section">
-        <h2>Credentials API</h2>
-        {% if has_credentials %}
-            <p class="text-success">Credentials configurees</p>
-        {% else %}
-            <p class="text-warning">Pas de credentials. Configurez votre fichier .env</p>
-            <div class="help-text">
-                <p>1. Copiez <code>.env.example</code> vers <code>.env</code></p>
-                <p>2. Renseignez votre cle privee Polygon (PK)</p>
-                <p>3. Utilisez le bouton ci-dessous pour generer les credentials API</p>
-            </div>
-            <button class="btn btn-secondary" hx-post="/api/setup/derive-keys" hx-target="#setup-result">
-                Generer Credentials API
-            </button>
-            <div id="setup-result"></div>
-        {% endif %}
-    </section>
-
+    <!-- Traders -->
     <section class="settings-section">
         <h2>Traders suivis</h2>
-        <form hx-post="/api/traders" hx-target="#traders-list" hx-swap="innerHTML"
-              hx-on::after-request="this.reset()">
-            <div class="form-row">
-                <input type="text" name="address" placeholder="Adresse wallet (0x...)" class="input" required>
-                <button type="submit" class="btn btn-primary">Ajouter</button>
-            </div>
-        </form>
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+            <form hx-post="/api/traders" hx-target="#traders-list" hx-swap="innerHTML"
+                  hx-on::after-request="this.reset()" style="flex: 1;">
+                <div class="form-row">
+                    <input type="text" name="address" placeholder="Adresse wallet (0x...)" class="input">
+                    <button type="submit" class="btn btn-secondary">Ajouter</button>
+                </div>
+            </form>
+            <button class="btn btn-primary"
+                    hx-post="/api/traders/refresh-suggestions" hx-target="#suggest-result" hx-swap="innerHTML">
+                Ajouter les meilleurs traders
+            </button>
+        </div>
+        <div id="suggest-result"></div>
         <div id="traders-list" hx-get="/api/traders/list" hx-trigger="load" hx-swap="innerHTML">
         </div>
     </section>
 
+    <!-- Risk Parameters -->
     <section class="settings-section">
         <h2>Parametres de risque</h2>
         <form hx-post="/api/settings" hx-swap="none"
