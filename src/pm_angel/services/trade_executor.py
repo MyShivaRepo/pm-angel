@@ -68,6 +68,19 @@ class TradeExecutor:
                 logger.exception("Error processing trade")
 
     async def _process_trade(self, trade: DetectedTrade) -> None:
+        # Skip if we already have an active bet on this market
+        if db.async_session is not None:
+            async with db.async_session() as session:
+                existing = await session.execute(
+                    select(Bet).where(
+                        Bet.condition_id == trade.condition_id,
+                        Bet.status == "active",
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    logger.debug("Already have active bet on: %s", trade.market_title[:30])
+                    return
+
         # Calculate scaled order size
         amount = trade.usd_size * self._scale
         amount = max(self._min_order, min(amount, self._max_order))
