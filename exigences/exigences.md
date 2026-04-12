@@ -9,6 +9,7 @@ Stratégie d'investissement : copier les meileurs portefeuilles.
 # Interface utilisateur
 Je veux un écran qui montre la liste des paris au fur et à meusure qu'ils sont pris, avec :
 - Le nom du pari
+- Le pari
 - Le montant investi
 - Le status (à parier, en cours, terminé)
 - Le résultat : gain ou perte en valeur absolu
