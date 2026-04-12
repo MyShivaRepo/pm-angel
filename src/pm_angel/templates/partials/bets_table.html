@@ -2,6 +2,7 @@
     <thead>
         <tr>
             <th>Nom du pari</th>
+            <th>Pari</th>
             <th>Montant investi</th>
             <th>Statut</th>
             <th>Resultat ($)</th>
@@ -14,9 +15,10 @@
         {% if bets %}
             {% for bet in bets %}
             <tr class="bet-row {{ bet.status }}">
+                <td>{{ bet.market_title }}</td>
                 <td>
                     <span class="outcome-badge {{ bet.outcome|lower }}">{{ bet.outcome }}</span>
-                    {{ bet.market_title }}
+                    {{ bet.side }}
                 </td>
                 <td>${{ "%.2f"|format(bet.amount_usd) }}</td>
                 <td>
@@ -41,7 +43,7 @@
             {% endfor %}
         {% else %}
             <tr>
-                <td colspan="7" class="empty-state">
+                <td colspan="8" class="empty-state">
                     Aucun pari pour le moment. Le bot copiera les trades des traders suivis.
                 </td>
             </tr>
