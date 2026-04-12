@@ -9,7 +9,7 @@ Stratégie d'investissement : copier les meileurs portefeuilles.
 # Interface utilisateur
 
 ## Onglet "Top Traders"
-Cet écran permet de visualiser les meilleurs traders de Polymarket
+Cet écran permet de visualiser les meilleurs traders de Polymarket.   
 Liste des meilleurs traders de Polymarket
 - Nom
 - Adresse
@@ -18,7 +18,7 @@ Liste des meilleurs traders de Polymarket
 - Bouton "Suivre"
 
 ## Onglet "Analysis"
-Cet écran permet de visualiser les décisions prise par le bot
+Cet écran permet de visualiser les décisions prise par le bot.   
 Liste des paris intéressants
 - Trader
 - Nom du pari
