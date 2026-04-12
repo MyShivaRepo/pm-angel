@@ -3,60 +3,41 @@
 <div class="settings">
     <h1>Configuration</h1>
 
-    <!-- API Credentials -->
+    <!-- Credentials -->
     <section class="settings-section">
-        <h2>Credentials API Polymarket</h2>
+        <h2>Connexion Polymarket</h2>
         {% if has_credentials %}
-            <p class="text-success">Credentials API configurees</p>
+            <p class="text-success">Connecte a Polymarket</p>
             <details style="margin-top: 0.5rem;">
-                <summary class="text-muted" style="cursor: pointer; font-size: 0.85rem;">Modifier les credentials</summary>
-                <form hx-post="/api/setup/api-credentials" hx-target="#creds-result" hx-swap="innerHTML"
-                      style="margin-top: 0.75rem;">
-                    <div class="form-grid">
-                        <label>
-                            API Key
-                            <input type="text" name="api_key" placeholder="Votre API Key" class="input" required>
-                        </label>
-                        <label>
-                            Secret
-                            <input type="password" name="api_secret" placeholder="Votre Secret" class="input" required>
-                        </label>
-                        <label>
-                            Passphrase
-                            <input type="password" name="api_passphrase" placeholder="Votre Passphrase" class="input" required>
-                        </label>
-                    </div>
-                    <button type="submit" class="btn btn-secondary" style="margin-top: 0.75rem;">Mettre a jour</button>
-                </form>
-                <div id="creds-result" style="margin-top: 0.5rem;"></div>
+                <summary class="text-muted" style="cursor: pointer; font-size: 0.85rem;">Reconfigurer</summary>
+                <div style="margin-top: 0.75rem;">
+                    <p class="help-text">Saisissez votre cle privee Polymarket.</p>
+                    <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML">
+                        <div class="form-row">
+                            <input type="password" name="private_key" placeholder="Cle privee (64 caracteres hex)" class="input" required>
+                            <button type="submit" class="btn btn-secondary">Sauvegarder</button>
+                        </div>
+                    </form>
+                    <div id="pk-result" style="margin-top: 0.5rem;"></div>
+                </div>
             </details>
         {% else %}
             <div class="help-text">
-                <p>Pour obtenir vos credentials API :</p>
+                <p><strong>Comment obtenir votre cle privee :</strong></p>
                 <ol style="margin: 0.5rem 0; padding-left: 1.25rem;">
-                    <li>Connectez-vous sur <a href="https://polymarket.com/fr/settings?tab=api-keys" target="_blank" style="color: var(--primary);">polymarket.com &gt; Settings &gt; API Keys</a></li>
-                    <li>Cliquez sur "Create API Key"</li>
-                    <li>Copiez les 3 valeurs ci-dessous</li>
+                    <li>Allez sur <a href="https://reveal.magic.link/polymarket" target="_blank" style="color: var(--primary);">reveal.magic.link/polymarket</a></li>
+                    <li>Connectez-vous avec le <strong>meme email ou compte Google</strong> que votre compte Polymarket</li>
+                    <li>Copiez la cle privee affichee</li>
+                    <li>Collez-la ci-dessous</li>
                 </ol>
             </div>
-            <form hx-post="/api/setup/api-credentials" hx-target="#creds-result" hx-swap="innerHTML">
-                <div class="form-grid">
-                    <label>
-                        API Key
-                        <input type="text" name="api_key" placeholder="Votre API Key" class="input" required>
-                    </label>
-                    <label>
-                        Secret
-                        <input type="password" name="api_secret" placeholder="Votre Secret" class="input" required>
-                    </label>
-                    <label>
-                        Passphrase
-                        <input type="password" name="api_passphrase" placeholder="Votre Passphrase" class="input" required>
-                    </label>
+            <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML">
+                <div class="form-row">
+                    <input type="password" name="private_key" placeholder="Cle privee (64 caracteres hex)" class="input" required>
+                    <button type="submit" class="btn btn-primary">Connecter</button>
                 </div>
-                <button type="submit" class="btn btn-primary" style="margin-top: 0.75rem;">Sauvegarder</button>
             </form>
-            <div id="creds-result" style="margin-top: 0.5rem;"></div>
+            <div id="pk-result" style="margin-top: 0.5rem;"></div>
         {% endif %}
     </section>
 
@@ -77,7 +58,7 @@
                 </button>
             {% else %}
                 <button class="btn btn-primary" disabled>Demarrer le bot</button>
-                <span class="text-muted" style="margin-left: 0.5rem;">Saisissez vos credentials API d'abord</span>
+                <span class="text-muted" style="margin-left: 0.5rem;">Connectez-vous a Polymarket d'abord</span>
             {% endif %}
         </div>
     </section>
@@ -137,25 +118,6 @@
             </div>
             <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Sauvegarder</button>
         </form>
-    </section>
-
-    <!-- Advanced: Private Key (optional) -->
-    <section class="settings-section">
-        <h2>Avance : Cle privee Polygon (optionnel)</h2>
-        <p class="help-text">
-            Uniquement si vous utilisez un wallet Metamask/Rabby. Non necessaire si vous avez saisi vos credentials API ci-dessus.
-        </p>
-        <details>
-            <summary class="text-muted" style="cursor: pointer; font-size: 0.85rem;">Configurer une cle privee</summary>
-            <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML"
-                  style="margin-top: 0.75rem;">
-                <div class="form-row">
-                    <input type="password" name="private_key" placeholder="0x... (64 caracteres hex)" class="input" required>
-                    <button type="submit" class="btn btn-secondary">Sauvegarder</button>
-                </div>
-            </form>
-            <div id="pk-result" style="margin-top: 0.5rem;"></div>
-        </details>
     </section>
 </div>
 {% endblock %}
