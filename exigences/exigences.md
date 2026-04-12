@@ -7,10 +7,33 @@ Accès à l'application : <a href="https://localhost:8888">http://localhost:8888
 Stratégie d'investissement : copier les meileurs portefeuilles.  
 
 # Interface utilisateur
-Je veux un écran qui montre la liste des paris au fur et à meusure qu'ils sont pris, avec :
-- Le nom du pari
-- Le pari
-- Le montant investi
-- Le status (à parier, en cours, terminé)
-- Le résultat : gain ou perte en valeur absolu
-- Le résultat : gain ou perte en pourcentage
+
+## Onglet "Top Traders"
+Cet écran permet de visualiser les meilleurs traders de Polymarket
+Liste des meilleurs traders de Polymarket
+- Nom
+- Adresse
+- PNL
+- Volume
+- Bouton "Suivre"
+
+## Onglet "Analysis"
+Cet écran permet de visualiser les décisions prise par le bot
+Liste des paris intéressants
+- Trader
+- Nom du pari
+- Pari
+
+- ## Onglet "Dashboard"
+Cet écran permet de visualiser les paris pris par le bot
+Liste des paris intéressants
+- Nom du pari
+- Pari
+- Montant du pari
+- Status (à prendre, en cours, terminé)
+- Résulat (en valeur absolue)
+- Résulat (en pourcentage)
+
+## Onglet "Settings"
+Champs de connection à Polymarket via l'API Key
+Bouton de démarrage du bot
