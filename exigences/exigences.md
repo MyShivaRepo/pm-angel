@@ -35,5 +35,5 @@ Liste des paris pris
 - Résulat (en pourcentage)
 
 ## Onglet "Settings"
-Champs de connection à Polymarket via l'API Key
-Bouton de démarrage du bot
+Champs de connection à Polymarket via l'API Key.   
+Bouton de démarrage du bot.    
