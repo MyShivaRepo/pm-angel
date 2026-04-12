@@ -57,7 +57,7 @@ class Settings:
 
     @property
     def has_credentials(self) -> bool:
-        return bool(self.private_key and self.clob_api_key)
+        return bool(self.clob_api_key and self.clob_api_secret and self.clob_api_passphrase)
 
     @property
     def has_private_key(self) -> bool:

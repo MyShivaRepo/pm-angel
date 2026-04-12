@@ -186,28 +186,53 @@ async def leaderboard_data(
 
 # --- Credentials Setup (from web UI) ---
 
+@app.post("/api/setup/api-credentials", response_class=HTMLResponse)
+async def save_api_credentials(
+    api_key: str = Form(...),
+    api_secret: str = Form(...),
+    api_passphrase: str = Form(...),
+):
+    key = api_key.strip()
+    secret = api_secret.strip()
+    passphrase = api_passphrase.strip()
+
+    if not key or not secret or not passphrase:
+        return HTMLResponse(
+            '<p class="text-warning">Les 3 champs sont obligatoires.</p>'
+        )
+
+    settings.clob_api_key = key
+    settings.clob_api_secret = secret
+    settings.clob_api_passphrase = passphrase
+    await settings.save_to_db("clob_api_key", key)
+    await settings.save_to_db("clob_api_secret", secret)
+    await settings.save_to_db("clob_api_passphrase", passphrase)
+
+    _rebuild_clob()
+    logger.info("API credentials saved from web UI")
+
+    return HTMLResponse(
+        '<p class="text-success">Credentials API sauvegardees ! Vous pouvez maintenant demarrer le bot.</p>'
+    )
+
+
 @app.post("/api/setup/private-key", response_class=HTMLResponse)
 async def save_private_key(private_key: str = Form(...)):
-    # Clean input: remove whitespace, quotes, newlines
     pk = private_key.strip().strip("'\"").strip()
-    # Remove 0x prefix if present, we'll add it back
     if pk.lower().startswith("0x"):
         pk = pk[2:]
-    # Remove any spaces or dashes within the key
     pk = pk.replace(" ", "").replace("-", "").replace("\n", "").replace("\r", "")
-    # Validate: must be hex characters only
+
     hex_chars = set("0123456789abcdefABCDEF")
     invalid = [c for c in pk if c not in hex_chars]
     if invalid:
         return HTMLResponse(
             f'<p class="text-warning">Cle invalide : caracteres non-hexadecimaux trouves: '
-            f'{", ".join(repr(c) for c in invalid[:5])}. '
-            f'La cle doit contenir uniquement des caracteres 0-9 et a-f.</p>'
+            f'{", ".join(repr(c) for c in invalid[:5])}.</p>'
         )
     if len(pk) != 64:
         return HTMLResponse(
-            f'<p class="text-warning">Cle invalide : {len(pk)} caracteres au lieu de 64. '
-            f'Une cle privee Ethereum/Polygon fait exactement 64 caracteres hexadecimaux.</p>'
+            f'<p class="text-warning">Cle invalide : {len(pk)} caracteres au lieu de 64.</p>'
         )
     pk = "0x" + pk.lower()
 
@@ -215,49 +240,33 @@ async def save_private_key(private_key: str = Form(...)):
     await settings.save_to_db("private_key", pk)
     logger.info("Private key saved to database")
 
-    return HTMLResponse(
-        '<p class="text-success">Cle privee sauvegardee !</p>'
-        '<p class="help-text">Cliquez maintenant sur "Generer Credentials API" pour obtenir vos cles CLOB.</p>'
-    )
-
-
-@app.post("/api/setup/derive-keys", response_class=HTMLResponse)
-async def derive_keys():
-    if not settings.has_private_key:
-        return HTMLResponse(
-            '<p class="text-warning">Saisissez d\'abord votre cle privee ci-dessus.</p>'
-        )
+    # Auto-derive API credentials
     try:
-        # Create a temporary CLOB client just for key derivation
         temp_clob = ClobWrapper(
             host=settings.clob_host,
-            private_key=settings.private_key,
+            private_key=pk,
             chain_id=settings.chain_id,
-            api_key="",
-            api_secret="",
-            api_passphrase="",
+            api_key="", api_secret="", api_passphrase="",
         )
         creds = await temp_clob.derive_api_creds()
-
-        # Save to settings and DB
         settings.clob_api_key = creds["api_key"]
         settings.clob_api_secret = creds["api_secret"]
         settings.clob_api_passphrase = creds["api_passphrase"]
         await settings.save_to_db("clob_api_key", creds["api_key"])
         await settings.save_to_db("clob_api_secret", creds["api_secret"])
         await settings.save_to_db("clob_api_passphrase", creds["api_passphrase"])
-
-        # Rebuild CLOB client with new credentials
         _rebuild_clob()
-
-        logger.info("API credentials derived and saved")
+        logger.info("API credentials auto-derived and saved")
         return HTMLResponse(
-            '<p class="text-success">Credentials API generees et sauvegardees automatiquement !</p>'
-            '<p class="help-text">Vous pouvez maintenant demarrer le bot.</p>'
+            '<p class="text-success">Cle privee sauvegardee et credentials API generees automatiquement !</p>'
         )
     except Exception as exc:
-        logger.error("Key derivation failed: %s", exc)
-        return HTMLResponse(f'<p class="text-warning">Erreur: {exc}</p>')
+        logger.error("Auto key derivation failed: %s", exc)
+        return HTMLResponse(
+            f'<p class="text-success">Cle privee sauvegardee.</p>'
+            f'<p class="text-warning">Generation auto des credentials echouee ({exc}). '
+            f'Saisissez-les manuellement ci-dessous.</p>'
+        )
 
 
 # --- Bot Control ---
