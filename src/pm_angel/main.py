@@ -211,10 +211,32 @@ async def leaderboard_data(
         logger.error("Leaderboard fetch failed: %s", exc)
         traders = []
 
+    # Get already tracked addresses
+    tracked = set(await _get_tracked_addresses())
+
     rows = []
     for t in traders:
         name = t.username or "Anonyme"
         addr_short = t.address[:8] + "..." + t.address[-4:] if len(t.address) > 14 else t.address
+        is_tracked = t.address in tracked
+
+        if is_tracked:
+            btn = (
+                f'<button class="btn btn-sm btn-danger" '
+                f'hx-delete="/api/traders/{t.address}" '
+                f'hx-target="closest tr" hx-swap="outerHTML" '
+                f'hx-on::after-request="htmx.ajax(\'GET\', \'/api/top-traders?category={category}&time_period={time_period}\', '
+                f'{{target: \'#traders-body\', swap: \'innerHTML\'}})">Ne plus suivre</button>'
+            )
+        else:
+            btn = (
+                f'<button class="btn btn-sm btn-primary" '
+                f'hx-post="/api/traders" hx-vals=\'{{"address": "{t.address}"}}\' '
+                f'hx-swap="none" '
+                f'hx-on::after-request="htmx.ajax(\'GET\', \'/api/top-traders?category={category}&time_period={time_period}\', '
+                f'{{target: \'#traders-body\', swap: \'innerHTML\'}})">Suivre</button>'
+            )
+
         rows.append(
             f'<tr>'
             f'<td>{t.rank}</td>'
@@ -223,10 +245,7 @@ async def leaderboard_data(
             f'<td class="{"positive" if t.pnl >= 0 else "negative"}">'
             f'{"+" if t.pnl >= 0 else ""}${t.pnl:,.2f}</td>'
             f'<td>${t.volume:,.0f}</td>'
-            f'<td><button class="btn btn-sm btn-primary" '
-            f'hx-post="/api/traders" hx-vals=\'{{"address": "{t.address}"}}\' '
-            f'hx-swap="none" '
-            f'hx-on::after-request="this.textContent=\'Ajoute\'">Suivre</button></td>'
+            f'<td>{btn}</td>'
             f'</tr>'
         )
 
