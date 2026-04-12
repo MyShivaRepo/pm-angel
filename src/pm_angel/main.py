@@ -720,14 +720,23 @@ async def _get_stats() -> dict[str, Any]:
         )
 
     balance = 0.0
+    positions_value = 0.0
     if clob:
         try:
             balance = await clob.get_balance()
         except Exception:
             pass
+    if settings.proxy_wallet:
+        try:
+            positions = await data_api.get_positions(settings.proxy_wallet)
+            positions_value = sum(float(p.get("currentValue", p.get("value", 0))) for p in positions)
+        except Exception:
+            pass
 
     return {
         "balance": balance,
+        "positions_value": positions_value,
+        "portfolio": balance + positions_value,
         "active_count": active.scalar() or 0,
         "total_pnl": pnl.scalar() or 0.0,
         "total_exposure": exposure.scalar() or 0.0,
