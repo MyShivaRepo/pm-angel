@@ -1,0 +1,264 @@
+:root {
+    --bg: #0f1117;
+    --bg-card: #1a1d28;
+    --bg-hover: #252836;
+    --border: #2d3044;
+    --text: #e4e4e7;
+    --text-muted: #8b8d97;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #eab308;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    gap: 2rem;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.nav-links { display: flex; gap: 0.5rem; }
+
+.nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.nav-link:hover { color: var(--text); background: var(--bg-hover); }
+.nav-link.active { color: var(--primary); background: rgba(99, 102, 241, 0.1); }
+
+#status-bar {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.status-dot.offline { background: var(--danger); }
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* Summary cards */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.card-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.card-value { font-size: 1.5rem; font-weight: 600; }
+
+/* Table */
+.bets-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.bets-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.bets-table td {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.bets-table tr:hover td { background: var(--bg-hover); }
+
+.positive { color: var(--success); }
+.negative { color: var(--danger); }
+
+/* Badges */
+.status-badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge.pending { background: rgba(234, 179, 8, 0.15); color: var(--warning); }
+.status-badge.active { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+.status-badge.settled { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+.status-badge.rejected, .status-badge.failed { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+.outcome-badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+}
+
+.outcome-badge.yes { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+.outcome-badge.no { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+.trader-addr {
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 1rem !important;
+}
+
+/* Settings */
+.settings-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Forms */
+.input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.input:focus { outline: none; border-color: var(--primary); }
+
+.form-row { display: flex; gap: 0.75rem; }
+.form-row .input { flex: 1; }
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Buttons */
+.btn {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #dc2626; }
+.btn-secondary { background: var(--bg-hover); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 0.3rem 0.75rem; font-size: 0.8rem; }
+
+/* Helpers */
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.help-text { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; }
+.help-text code { background: var(--bg-hover); padding: 0.15rem 0.4rem; border-radius: 4px; }
+
+/* Filters */
+.filters { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+.filters .input { width: auto; min-width: 150px; }
+
+/* Bot controls */
+.bot-controls { display: flex; gap: 0.75rem; }
+
+/* Trader list */
+.trader-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.trader-item:last-child { border-bottom: none; }
+
+.trader-info { display: flex; flex-direction: column; }
+.trader-name { font-weight: 500; }
+.trader-address { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); }

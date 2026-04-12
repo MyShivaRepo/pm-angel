@@ -1,0 +1,6 @@
+<span class="status-dot {{ 'online' if status.running else 'offline' }}"></span>
+{% if status.running %}
+    Bot actif | ${{ "%.2f"|format(status.balance_usdc or 0) }} USDC | {{ status.total_positions }} positions
+{% else %}
+    Bot arrete
+{% endif %}

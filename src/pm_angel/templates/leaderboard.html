@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="leaderboard">
+    <h1>Leaderboard Polymarket</h1>
+
+    <div class="filters">
+        <select id="category" class="input" hx-get="/api/leaderboard" hx-target="#leaderboard-body"
+                hx-include="#category, #time-period" hx-trigger="change" name="category">
+            <option value="OVERALL">Tous</option>
+            <option value="POLITICS">Politique</option>
+            <option value="SPORTS">Sports</option>
+            <option value="CRYPTO">Crypto</option>
+            <option value="CULTURE">Culture</option>
+        </select>
+        <select id="time-period" class="input" hx-get="/api/leaderboard" hx-target="#leaderboard-body"
+                hx-include="#category, #time-period" hx-trigger="change" name="time_period">
+            <option value="MONTH">Mois</option>
+            <option value="WEEK">Semaine</option>
+            <option value="DAY">Jour</option>
+            <option value="ALL">Tout</option>
+        </select>
+    </div>
+
+    <table class="bets-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Trader</th>
+                <th>PnL</th>
+                <th>Volume</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="leaderboard-body" hx-get="/api/leaderboard" hx-trigger="load" hx-swap="innerHTML">
+            <tr><td colspan="5" class="empty-state">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

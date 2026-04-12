@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="settings">
+    <h1>Configuration</h1>
+
+    <section class="settings-section">
+        <h2>Bot</h2>
+        <div class="bot-controls">
+            {% if bot_running %}
+                <button class="btn btn-danger" hx-post="/api/bot/stop" hx-swap="none"
+                        hx-on::after-request="location.reload()">
+                    Arreter le bot
+                </button>
+            {% else %}
+                <button class="btn btn-primary" hx-post="/api/bot/start" hx-swap="none"
+                        hx-on::after-request="location.reload()">
+                    Demarrer le bot
+                </button>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Credentials API</h2>
+        {% if has_credentials %}
+            <p class="text-success">Credentials configurees</p>
+        {% else %}
+            <p class="text-warning">Pas de credentials. Configurez votre fichier .env</p>
+            <div class="help-text">
+                <p>1. Copiez <code>.env.example</code> vers <code>.env</code></p>
+                <p>2. Renseignez votre cle privee Polygon (PK)</p>
+                <p>3. Utilisez le bouton ci-dessous pour generer les credentials API</p>
+            </div>
+            <button class="btn btn-secondary" hx-post="/api/setup/derive-keys" hx-target="#setup-result">
+                Generer Credentials API
+            </button>
+            <div id="setup-result"></div>
+        {% endif %}
+    </section>
+
+    <section class="settings-section">
+        <h2>Traders suivis</h2>
+        <form hx-post="/api/traders" hx-target="#traders-list" hx-swap="innerHTML"
+              hx-on::after-request="this.reset()">
+            <div class="form-row">
+                <input type="text" name="address" placeholder="Adresse wallet (0x...)" class="input" required>
+                <button type="submit" class="btn btn-primary">Ajouter</button>
+            </div>
+        </form>
+        <div id="traders-list" hx-get="/api/traders/list" hx-trigger="load" hx-swap="innerHTML">
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <h2>Parametres de risque</h2>
+        <form hx-post="/api/settings" hx-swap="none"
+              hx-on::after-request="alert('Parametres sauvegardes')">
+            <div class="form-grid">
+                <label>
+                    Max par marche (USD)
+                    <input type="number" name="max_position_usd" value="{{ settings.max_position_usd }}"
+                           step="1" min="1" class="input">
+                </label>
+                <label>
+                    Exposition totale max (USD)
+                    <input type="number" name="max_total_exposure_usd" value="{{ settings.max_total_exposure_usd }}"
+                           step="1" min="1" class="input">
+                </label>
+                <label>
+                    Perte journaliere max (USD)
+                    <input type="number" name="daily_loss_limit_usd" value="{{ settings.daily_loss_limit_usd }}"
+                           step="1" min="1" class="input">
+                </label>
+                <label>
+                    Facteur de scaling
+                    <input type="number" name="position_scale_factor" value="{{ settings.position_scale_factor }}"
+                           step="0.01" min="0.01" max="1" class="input">
+                </label>
+                <label>
+                    Intervalle polling (sec)
+                    <input type="number" name="poll_interval_seconds" value="{{ settings.poll_interval_seconds }}"
+                           step="1" min="5" class="input">
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Sauvegarder</button>
+        </form>
+    </section>
+</div>
+{% endblock %}

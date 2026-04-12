@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard">
+    <h1>Tableau des Paris</h1>
+
+    <div class="summary-cards">
+        <div class="card">
+            <div class="card-label">Positions actives</div>
+            <div class="card-value" id="active-count">{{ stats.active_count }}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">PnL Total</div>
+            <div class="card-value {% if stats.total_pnl >= 0 %}positive{% else %}negative{% endif %}">
+                ${{ "%.2f"|format(stats.total_pnl) }}
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-label">Exposition</div>
+            <div class="card-value">${{ "%.2f"|format(stats.total_exposure) }}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Traders suivis</div>
+            <div class="card-value">{{ stats.tracked_traders }}</div>
+        </div>
+    </div>
+
+    <div id="bets-table" hx-get="/api/bets/table" hx-trigger="load, every 5s" hx-swap="innerHTML">
+        {% include "partials/bets_table.html" %}
+    </div>
+</div>
+{% endblock %}

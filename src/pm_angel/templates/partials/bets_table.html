@@ -1,0 +1,50 @@
+<table class="bets-table">
+    <thead>
+        <tr>
+            <th>Nom du pari</th>
+            <th>Montant investi</th>
+            <th>Statut</th>
+            <th>Resultat ($)</th>
+            <th>Resultat (%)</th>
+            <th>Trader source</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if bets %}
+            {% for bet in bets %}
+            <tr class="bet-row {{ bet.status }}">
+                <td>
+                    <span class="outcome-badge {{ bet.outcome|lower }}">{{ bet.outcome }}</span>
+                    {{ bet.market_title }}
+                </td>
+                <td>${{ "%.2f"|format(bet.amount_usd) }}</td>
+                <td>
+                    <span class="status-badge {{ bet.status }}">
+                        {% if bet.status == 'pending' %}A parier
+                        {% elif bet.status == 'active' %}En cours
+                        {% elif bet.status == 'settled' %}Termine
+                        {% elif bet.status == 'rejected' %}Rejete
+                        {% elif bet.status == 'failed' %}Echoue
+                        {% else %}{{ bet.status }}{% endif %}
+                    </span>
+                </td>
+                <td class="{% if bet.pnl_absolute >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if bet.pnl_absolute >= 0 %}+{% endif %}${{ "%.2f"|format(bet.pnl_absolute) }}
+                </td>
+                <td class="{% if bet.pnl_percent >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if bet.pnl_percent >= 0 %}+{% endif %}{{ "%.1f"|format(bet.pnl_percent) }}%
+                </td>
+                <td class="trader-addr">{{ bet.source_trader[:10] }}...</td>
+                <td>{{ bet.created_at.strftime('%d/%m %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="7" class="empty-state">
+                    Aucun pari pour le moment. Le bot copiera les trades des traders suivis.
+                </td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>
