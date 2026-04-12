@@ -106,6 +106,7 @@ class ActivityPoller:
         if not activities:
             return
 
+        new_count = 0
         for activity in activities:
             tx_hash = activity.get("transactionHash", activity.get("id", ""))
             if tx_hash in self._seen_hashes:
@@ -123,6 +124,16 @@ class ActivityPoller:
                     trade.usd_size,
                     trade.price,
                 )
+                from pm_angel.services.activity_log import activity_log
+                activity_log.detect(
+                    trade.trader_address, trade.market_title,
+                    trade.side, trade.usd_size, trade.price,
+                )
+                new_count += 1
+
+        if new_count:
+            from pm_angel.services.activity_log import activity_log
+            activity_log.poll(address, new_count)
 
         # Update last seen timestamp
         timestamps = [int(a.get("timestamp", 0)) for a in activities if a.get("timestamp")]

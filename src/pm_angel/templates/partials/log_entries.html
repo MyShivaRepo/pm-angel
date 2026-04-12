@@ -1,0 +1,16 @@
+{% if entries %}
+<div class="log-list">
+    {% for e in entries %}
+    <div class="log-entry log-{{ e.level }}">
+        <span class="log-time">{{ e.timestamp.strftime('%H:%M:%S') }}</span>
+        <span class="log-badge log-badge-{{ e.category }}">{{ e.category }}</span>
+        <span class="log-msg">{{ e.message }}</span>
+        {% if e.details.get('market') %}
+        <span class="log-market">{{ e.details.market[:50] }}</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted" style="padding: 1rem 0;">Aucune activite pour le moment. Demarrez le bot pour voir les evenements.</p>
+{% endif %}

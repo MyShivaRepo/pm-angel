@@ -86,13 +86,18 @@ class TradeExecutor:
             target_price=trade.price,
         )
 
+        from pm_angel.services.activity_log import activity_log
+
         if not approved:
             logger.warning(
                 "Order rejected by risk manager: %s (trade: %s $%.2f)",
                 reason, trade.market_title[:30], amount
             )
+            activity_log.risk_rejected(trade.market_title, amount, reason)
             await self._save_bet(trade, amount, current_price, status="rejected")
             return
+
+        activity_log.risk_approved(trade.market_title, amount)
 
         # Execute the order
         try:
@@ -106,9 +111,11 @@ class TradeExecutor:
                 "Order filled: %s %s $%.2f -> %s",
                 trade.side, trade.market_title[:30], amount, result
             )
+            activity_log.order_success(trade.market_title, trade.side, amount)
             await self._save_bet(trade, amount, current_price, status="active")
         except Exception as exc:
             logger.error("Order execution failed: %s", exc)
+            activity_log.order_failed(trade.market_title, str(exc))
             await self._save_bet(trade, amount, current_price, status="failed")
 
     async def _save_bet(

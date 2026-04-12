@@ -98,6 +98,7 @@ class ClobWrapper:
         args = MarketOrderArgs(
             token_id=token_id,
             amount=amount_usd,
+            side=side.upper(),
         )
 
         signed = await asyncio.to_thread(client.create_market_order, args)

@@ -284,3 +284,54 @@ body {
 .trader-info { display: flex; flex-direction: column; }
 .trader-name { font-weight: 500; }
 .trader-address { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); }
+
+/* Progress bars */
+.risk-item { margin-bottom: 0.75rem; }
+.risk-label { font-size: 0.85rem; margin-bottom: 0.25rem; color: var(--text-muted); }
+.progress-bar {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+/* Activity log */
+.log-list { display: flex; flex-direction: column; gap: 2px; }
+.log-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    background: var(--bg);
+}
+
+.log-entry.log-success { border-left: 3px solid var(--success); }
+.log-entry.log-warning { border-left: 3px solid var(--warning); }
+.log-entry.log-error { border-left: 3px solid var(--danger); }
+.log-entry.log-info { border-left: 3px solid var(--primary); }
+
+.log-time { color: var(--text-muted); font-family: monospace; font-size: 0.75rem; min-width: 60px; }
+.log-badge {
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    min-width: 55px;
+    text-align: center;
+}
+.log-badge-poll { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+.log-badge-detect { background: rgba(234, 179, 8, 0.15); color: var(--warning); }
+.log-badge-risk { background: rgba(139, 141, 151, 0.15); color: var(--text-muted); }
+.log-badge-execute { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+.log-badge-sync { background: rgba(99, 102, 241, 0.15); color: var(--primary); }
+
+.log-msg { flex: 1; }
+.log-market { color: var(--text-muted); font-size: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

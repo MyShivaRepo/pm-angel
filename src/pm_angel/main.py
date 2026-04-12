@@ -111,6 +111,36 @@ async def settings_page(request: Request):
     })
 
 
+@app.get("/analysis", response_class=HTMLResponse)
+async def analysis_page(request: Request):
+    from pm_angel.services.activity_log import activity_log
+
+    traders = await _get_tracked_traders()
+    entries = activity_log.get_entries(limit=50)
+    detected = len([e for e in activity_log.get_entries(limit=500) if e.category == "detect"])
+    executed = len([e for e in activity_log.get_entries(limit=500) if e.category == "execute" and e.level == "success"])
+
+    return templates.TemplateResponse(request, "analysis.html", context={
+        "active_page": "analysis",
+        "bot_running": poller is not None and poller.is_running,
+        "traders": traders,
+        "entries": entries,
+        "detected_count": detected,
+        "executed_count": executed,
+        "risk": risk_manager.get_summary(),
+    })
+
+
+@app.get("/api/analysis/log", response_class=HTMLResponse)
+async def analysis_log(request: Request, category: str | None = None):
+    from pm_angel.services.activity_log import activity_log
+
+    entries = activity_log.get_entries(limit=50, category=category)
+    return templates.TemplateResponse(request, "partials/log_entries.html", context={
+        "entries": entries,
+    })
+
+
 @app.get("/leaderboard", response_class=HTMLResponse)
 async def leaderboard_page(request: Request):
     return templates.TemplateResponse(request, "leaderboard.html", context={
