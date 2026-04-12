@@ -213,10 +213,13 @@ async def leaderboard_data(
 
     rows = []
     for t in traders:
+        name = t.username or "Anonyme"
+        addr_short = t.address[:8] + "..." + t.address[-4:] if len(t.address) > 14 else t.address
         rows.append(
             f'<tr>'
             f'<td>{t.rank}</td>'
-            f'<td>{t.username or t.address[:12] + "..."}</td>'
+            f'<td>{name}</td>'
+            f'<td class="trader-addr">{addr_short}</td>'
             f'<td class="{"positive" if t.pnl >= 0 else "negative"}">'
             f'{"+" if t.pnl >= 0 else ""}${t.pnl:,.2f}</td>'
             f'<td>${t.volume:,.0f}</td>'
@@ -229,7 +232,7 @@ async def leaderboard_data(
 
     if not rows:
         return HTMLResponse(
-            '<tr><td colspan="5" class="empty-state">Aucun resultat</td></tr>'
+            '<tr><td colspan="6" class="empty-state">Aucun resultat</td></tr>'
         )
     return HTMLResponse("\n".join(rows))
 
