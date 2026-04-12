@@ -259,6 +259,7 @@ async def save_private_key(private_key: str = Form(...)):
         logger.info("API credentials auto-derived and saved")
         return HTMLResponse(
             '<p class="text-success">Cle privee sauvegardee et credentials API generees automatiquement !</p>'
+            '<script>setTimeout(function(){location.reload()},1500)</script>'
         )
     except Exception as exc:
         logger.error("Auto key derivation failed: %s", exc)
