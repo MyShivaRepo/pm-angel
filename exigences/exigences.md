@@ -25,7 +25,7 @@ Liste des paris intéressants
 - Pari
 
 - ## Onglet "Dashboard"
-Cet écran permet de visualiser les paris pris par le bot
+Cet écran permet de visualiser les paris pris par le bot.   
 Liste des paris intéressants
 - Nom du pari
 - Pari
