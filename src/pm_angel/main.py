@@ -188,21 +188,28 @@ async def leaderboard_data(
 
 @app.post("/api/setup/private-key", response_class=HTMLResponse)
 async def save_private_key(private_key: str = Form(...)):
-    pk = private_key.strip()
-    # Validate hex format
-    if not pk.startswith("0x"):
-        pk = "0x" + pk
-    try:
-        # Verify it's valid hex
-        bytes.fromhex(pk[2:])
-    except ValueError:
+    # Clean input: remove whitespace, quotes, newlines
+    pk = private_key.strip().strip("'\"").strip()
+    # Remove 0x prefix if present, we'll add it back
+    if pk.lower().startswith("0x"):
+        pk = pk[2:]
+    # Remove any spaces or dashes within the key
+    pk = pk.replace(" ", "").replace("-", "").replace("\n", "").replace("\r", "")
+    # Validate: must be hex characters only
+    hex_chars = set("0123456789abcdefABCDEF")
+    invalid = [c for c in pk if c not in hex_chars]
+    if invalid:
         return HTMLResponse(
-            '<p class="text-warning">Cle invalide : doit etre une chaine hexadecimale de 64 caracteres (0x...)</p>'
+            f'<p class="text-warning">Cle invalide : caracteres non-hexadecimaux trouves: '
+            f'{", ".join(repr(c) for c in invalid[:5])}. '
+            f'La cle doit contenir uniquement des caracteres 0-9 et a-f.</p>'
         )
-    if len(pk) != 66:
+    if len(pk) != 64:
         return HTMLResponse(
-            f'<p class="text-warning">Cle invalide : longueur {len(pk)} au lieu de 66 caracteres (0x + 64 hex)</p>'
+            f'<p class="text-warning">Cle invalide : {len(pk)} caracteres au lieu de 64. '
+            f'Une cle privee Ethereum/Polygon fait exactement 64 caracteres hexadecimaux.</p>'
         )
+    pk = "0x" + pk.lower()
 
     settings.private_key = pk
     await settings.save_to_db("private_key", pk)
