@@ -15,6 +15,10 @@
 
     <div class="summary-cards">
         <div class="card">
+            <div class="card-label">Balance USDC</div>
+            <div class="card-value">${{ "%.2f"|format(stats.balance) }}</div>
+        </div>
+        <div class="card">
             <div class="card-label">Positions actives</div>
             <div class="card-value" id="active-count">{{ stats.active_count }}</div>
         </div>

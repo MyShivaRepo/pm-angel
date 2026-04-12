@@ -562,7 +562,15 @@ async def _get_stats() -> dict[str, Any]:
             select(func.count()).select_from(TrackedTrader).where(TrackedTrader.is_active.is_(True))
         )
 
+    balance = 0.0
+    if clob:
+        try:
+            balance = await clob.get_balance()
+        except Exception:
+            pass
+
     return {
+        "balance": balance,
         "active_count": active.scalar() or 0,
         "total_pnl": pnl.scalar() or 0.0,
         "total_exposure": exposure.scalar() or 0.0,
