@@ -4,5 +4,9 @@ services:
     ports:
       - "8888:8888"
     volumes:
-      - ./data:/app/data
+      - pm-angel-data:/app/data
     restart: unless-stopped
+
+volumes:
+  pm-angel-data:
+    name: pm-angel-data
