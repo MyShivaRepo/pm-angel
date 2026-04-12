@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pm_angel.api.clob import ClobWrapper
 from pm_angel.api.gamma_api import GammaApiClient
 from pm_angel.config import Settings
-from pm_angel.database import async_session
+from pm_angel import database as db
 from pm_angel.models import Bet
 from pm_angel.services.activity_poller import DetectedTrade
 from pm_angel.services.risk_manager import RiskManager
@@ -118,11 +118,11 @@ class TradeExecutor:
         current_price: float,
         status: str,
     ) -> None:
-        if async_session is None:
+        if db.async_session is None:
             return
 
         try:
-            async with async_session() as session:
+            async with db.async_session() as session:
                 bet = Bet(
                     market_title=trade.market_title,
                     condition_id=trade.condition_id,
@@ -146,11 +146,11 @@ class TradeExecutor:
 
 async def update_prices(clob: ClobWrapper) -> None:
     """Periodic task to update current prices and PnL for active bets."""
-    if async_session is None:
+    if db.async_session is None:
         return
 
     try:
-        async with async_session() as session:
+        async with db.async_session() as session:
             result = await session.execute(
                 select(Bet).where(Bet.status == "active")
             )

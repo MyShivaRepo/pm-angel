@@ -52,7 +52,7 @@ class DataApiClient:
             "limit": min(limit, 50),
             "offset": offset,
         }
-        return await self._get("/leaderboard", params)
+        return await self._get("/v1/leaderboard", params)
 
     async def get_activity(
         self,

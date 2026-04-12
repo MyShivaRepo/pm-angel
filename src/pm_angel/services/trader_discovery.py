@@ -36,16 +36,17 @@ class TraderDiscovery:
         traders = []
         for i, entry in enumerate(raw):
             pnl = float(entry.get("pnl", 0))
-            volume = float(entry.get("volume", 0))
+            volume = float(entry.get("vol", entry.get("volume", 0)))
             if pnl < min_pnl or volume < min_volume:
                 continue
+            rank = int(entry.get("rank", i + 1))
             traders.append(
                 LeaderboardEntry(
-                    address=entry.get("userAddress", entry.get("address", "")),
-                    username=entry.get("username", entry.get("userName", "")),
+                    address=entry.get("proxyWallet", entry.get("userAddress", entry.get("address", ""))),
+                    username=entry.get("userName", entry.get("username", "")),
                     pnl=pnl,
                     volume=volume,
-                    rank=i + 1,
+                    rank=rank,
                 )
             )
         return traders

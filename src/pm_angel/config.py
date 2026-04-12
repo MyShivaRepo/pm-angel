@@ -73,14 +73,14 @@ class Settings:
 
     async def load_from_db(self) -> None:
         """Load credentials and settings from database."""
-        from pm_angel.database import async_session
+        from pm_angel import database as db
         from pm_angel.models import AppConfig
         from sqlalchemy import select
 
-        if async_session is None:
+        if db.async_session is None:
             return
 
-        async with async_session() as session:
+        async with db.async_session() as session:
             result = await session.execute(select(AppConfig))
             rows = result.scalars().all()
 
@@ -106,14 +106,14 @@ class Settings:
 
     async def save_to_db(self, key: str, value: str) -> None:
         """Save a single config key to database."""
-        from pm_angel.database import async_session
+        from pm_angel import database as db
         from pm_angel.models import AppConfig
         from sqlalchemy import select
 
-        if async_session is None:
+        if db.async_session is None:
             return
 
-        async with async_session() as session:
+        async with db.async_session() as session:
             result = await session.execute(
                 select(AppConfig).where(AppConfig.key == key)
             )

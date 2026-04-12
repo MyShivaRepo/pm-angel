@@ -150,16 +150,23 @@ class ActivityPoller:
             size = float(activity.get("size", activity.get("amount", 0)))
             usd_size = float(activity.get("usdcSize", price * size if price else 0))
 
-            # Resolve token_id via Gamma API
-            try:
-                market = await self._gamma_api.get_market(condition_id)
-                token_id = self._gamma_api.resolve_token_id(market, outcome_index)
-                market_title = market.get("question", market.get("title", condition_id[:16]))
-            except Exception:
-                token_id = activity.get("assetId", "")
-                market_title = activity.get("title", condition_id[:16])
+            # Use asset field directly if available, otherwise resolve via Gamma API
+            token_id = activity.get("asset", "")
+            market_title = activity.get("title", "")
+            outcome = activity.get("outcome", "")
 
-            outcome = "Yes" if outcome_index == 0 else "No"
+            if not token_id and condition_id:
+                try:
+                    market = await self._gamma_api.get_market(condition_id)
+                    token_id = self._gamma_api.resolve_token_id(market, outcome_index)
+                    market_title = market_title or market.get("question", market.get("title", condition_id[:16]))
+                except Exception:
+                    pass
+
+            if not outcome:
+                outcome = "Yes" if outcome_index == 0 else "No"
+            if not market_title:
+                market_title = condition_id[:16]
 
             return DetectedTrade(
                 trader_address=trader_address,

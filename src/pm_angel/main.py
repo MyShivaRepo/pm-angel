@@ -16,7 +16,8 @@ from pm_angel.api.clob import ClobWrapper
 from pm_angel.api.data_api import DataApiClient
 from pm_angel.api.gamma_api import GammaApiClient
 from pm_angel.config import Settings
-from pm_angel.database import async_session, close_db, init_db
+from pm_angel import database as db
+from pm_angel.database import close_db, init_db
 from pm_angel.models import Bet, TrackedTrader
 from pm_angel.services.activity_poller import ActivityPoller
 from pm_angel.services.risk_manager import RiskManager
@@ -349,10 +350,10 @@ async def add_trader(request: Request, address: str = Form(...)):
     if not address.startswith("0x") or len(address) < 10:
         return HTMLResponse('<p class="text-warning">Adresse invalide</p>')
 
-    if async_session is None:
+    if db.async_session is None:
         return HTMLResponse('<p class="text-warning">Database not ready</p>')
 
-    async with async_session() as session:
+    async with db.async_session() as session:
         existing = await session.execute(
             select(TrackedTrader).where(TrackedTrader.address == address)
         )
@@ -384,10 +385,10 @@ async def traders_list(request: Request):
 
 @app.delete("/api/traders/{address}", response_class=HTMLResponse)
 async def remove_trader(request: Request, address: str):
-    if async_session is None:
+    if db.async_session is None:
         return HTMLResponse("")
 
-    async with async_session() as session:
+    async with db.async_session() as session:
         result = await session.execute(
             select(TrackedTrader).where(TrackedTrader.address == address)
         )
@@ -473,7 +474,7 @@ async def update_settings(
 
 async def _auto_suggest_traders(force: bool = False) -> int:
     """Automatically add top traders from the leaderboard if none are tracked."""
-    if async_session is None:
+    if db.async_session is None:
         return 0
 
     # Check if we already have tracked traders
@@ -495,7 +496,7 @@ async def _auto_suggest_traders(force: bool = False) -> int:
         return 0
 
     count = 0
-    async with async_session() as session:
+    async with db.async_session() as session:
         for t in traders[:5]:  # Top 5 traders
             if not t.address:
                 continue
@@ -529,9 +530,9 @@ def _mask_key(key: str) -> str:
 
 
 async def _get_bets() -> list[Bet]:
-    if async_session is None:
+    if db.async_session is None:
         return []
-    async with async_session() as session:
+    async with db.async_session() as session:
         result = await session.execute(
             select(Bet).order_by(Bet.created_at.desc()).limit(100)
         )
@@ -539,10 +540,10 @@ async def _get_bets() -> list[Bet]:
 
 
 async def _get_stats() -> dict[str, Any]:
-    if async_session is None:
+    if db.async_session is None:
         return {"active_count": 0, "total_pnl": 0, "total_exposure": 0, "tracked_traders": 0}
 
-    async with async_session() as session:
+    async with db.async_session() as session:
         active = await session.execute(
             select(func.count()).select_from(Bet).where(Bet.status == "active")
         )
@@ -567,9 +568,9 @@ async def _get_stats() -> dict[str, Any]:
 
 
 async def _count_active_bets() -> int:
-    if async_session is None:
+    if db.async_session is None:
         return 0
-    async with async_session() as session:
+    async with db.async_session() as session:
         result = await session.execute(
             select(func.count()).select_from(Bet).where(Bet.status == "active")
         )
@@ -577,9 +578,9 @@ async def _count_active_bets() -> int:
 
 
 async def _get_tracked_traders() -> list[TrackedTrader]:
-    if async_session is None:
+    if db.async_session is None:
         return []
-    async with async_session() as session:
+    async with db.async_session() as session:
         result = await session.execute(
             select(TrackedTrader).where(TrackedTrader.is_active.is_(True))
         )
