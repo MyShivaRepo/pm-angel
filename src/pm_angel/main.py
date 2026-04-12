@@ -69,6 +69,8 @@ async def lifespan(app: FastAPI):
     _rebuild_clob()
     # Auto-populate suggested traders on first launch
     await _auto_suggest_traders()
+    # Sync existing Polymarket positions
+    await _sync_positions()
     logger.info("PM Angel started on %s:%d", settings.host, settings.port)
     yield
     await _stop_bot()
@@ -519,6 +521,85 @@ async def _auto_suggest_traders(force: bool = False) -> int:
     if count:
         logger.info("Auto-added %d traders from leaderboard", count)
     return count
+
+
+# --- Sync Polymarket Account ---
+
+async def _get_proxy_wallet() -> str:
+    """Get the proxy wallet address for the current user."""
+    if not settings.private_key:
+        return ""
+    try:
+        from eth_account import Account
+        eoa = Account.from_key(settings.private_key).address
+        profile = await gamma_api.get_public_profile(eoa)
+        return profile.get("proxyWallet", "")
+    except Exception:
+        return ""
+
+
+async def _sync_positions() -> int:
+    """Sync trades from Polymarket account into our database."""
+    proxy = await _get_proxy_wallet()
+    if not proxy or db.async_session is None:
+        return 0
+
+    try:
+        activities = await data_api.get_activity(proxy, limit=100, activity_type="TRADE")
+    except Exception as exc:
+        logger.warning("Could not fetch account activity: %s", exc)
+        return 0
+
+    count = 0
+    async with db.async_session() as session:
+        for a in activities:
+            tx_hash = a.get("transactionHash", "")
+            if not tx_hash:
+                continue
+
+            # Check if already in DB
+            existing = await session.execute(
+                select(Bet).where(Bet.token_id == tx_hash)
+            )
+            if existing.scalar_one_or_none():
+                continue
+
+            price = float(a.get("price", 0))
+            usd_size = float(a.get("usdcSize", 0))
+            side = a.get("side", "BUY")
+            outcome = a.get("outcome", "")
+            title = a.get("title", "")
+
+            bet = Bet(
+                market_title=title,
+                condition_id=a.get("conditionId", ""),
+                token_id=tx_hash,  # Use tx_hash as unique ID for synced trades
+                side=side if side else "BUY",
+                outcome=outcome if outcome else ("Yes" if a.get("outcomeIndex", 0) == 0 else "No"),
+                amount_usd=usd_size,
+                entry_price=price,
+                current_price=price,
+                status="active",
+                pnl_absolute=0.0,
+                pnl_percent=0.0,
+                source_trader="Mon compte",
+            )
+            session.add(bet)
+            count += 1
+
+        await session.commit()
+
+    if count:
+        logger.info("Synced %d trades from Polymarket account", count)
+    return count
+
+
+@app.post("/api/sync", response_class=HTMLResponse)
+async def sync_account():
+    count = await _sync_positions()
+    if count:
+        return HTMLResponse(f'<p class="text-success">{count} trades synchronises !</p>')
+    return HTMLResponse('<p class="text-muted">Aucun nouveau trade a synchroniser.</p>')
 
 
 # --- Helpers ---

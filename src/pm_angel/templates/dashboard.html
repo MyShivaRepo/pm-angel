@@ -38,6 +38,17 @@
         </div>
     </div>
 
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Historique</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <div id="sync-result"></div>
+            <button class="btn btn-secondary btn-sm"
+                    hx-post="/api/sync" hx-target="#sync-result" hx-swap="innerHTML">
+                Synchroniser
+            </button>
+        </div>
+    </div>
+
     <div id="bets-table" hx-get="/api/bets/table" hx-trigger="load, every 5s" hx-swap="innerHTML">
         {% include "partials/bets_table.html" %}
     </div>
