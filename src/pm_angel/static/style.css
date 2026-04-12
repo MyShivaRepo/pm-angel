@@ -199,6 +199,28 @@ body {
 
 .input:focus { outline: none; border-color: var(--primary); }
 
+/* Alerts */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.alert a { color: inherit; font-weight: 600; text-decoration: underline; }
+
+.alert-warning {
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    color: var(--warning);
+}
+
+.alert-info {
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: var(--primary-hover);
+}
+
 .form-row { display: flex; gap: 0.75rem; }
 .form-row .input { flex: 1; }
 

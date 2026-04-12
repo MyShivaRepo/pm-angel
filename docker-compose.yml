@@ -5,6 +5,4 @@ services:
       - "8888:8888"
     volumes:
       - ./data:/app/data
-    env_file:
-      - .env
     restart: unless-stopped

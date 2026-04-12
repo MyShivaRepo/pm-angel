@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -85,15 +85,14 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    # Redirect to setup if no credentials
-    if not settings.has_private_key:
-        return RedirectResponse("/settings", status_code=302)
     stats = await _get_stats()
     bets = await _get_bets()
     return templates.TemplateResponse(request, "dashboard.html", context={
         "active_page": "dashboard",
         "stats": stats,
         "bets": bets,
+        "has_credentials": settings.has_credentials,
+        "bot_running": poller is not None and poller.is_running,
     })
 
 

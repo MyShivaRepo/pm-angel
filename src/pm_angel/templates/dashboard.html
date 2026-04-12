@@ -3,6 +3,16 @@
 <div class="dashboard">
     <h1>Tableau des Paris</h1>
 
+    {% if not has_credentials %}
+    <div class="alert alert-warning">
+        Credentials API non configurees. <a href="/settings">Allez dans Settings</a> pour configurer votre cle privee et generer vos credentials.
+    </div>
+    {% elif not bot_running %}
+    <div class="alert alert-info">
+        Le bot est arrete. <a href="/settings">Demarrez-le depuis Settings</a> pour commencer a copier les trades.
+    </div>
+    {% endif %}
+
     <div class="summary-cards">
         <div class="card">
             <div class="card-label">Positions actives</div>
