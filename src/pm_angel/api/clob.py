@@ -41,7 +41,7 @@ class ClobWrapper:
             host=self._host,
             key=self._private_key,
             chain_id=self._chain_id,
-            signature_type=2,  # Proxy wallet (Magic Link / email login)
+            signature_type=0,  # EOA signature (works with Magic Link exported key)
             creds=ApiCreds(
                 api_key=self._api_key,
                 api_secret=self._api_secret,
@@ -79,7 +79,7 @@ class ClobWrapper:
         from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
 
         client = self._ensure_client()
-        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=2)
+        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=0)
         result = await asyncio.to_thread(client.get_balance_allowance, params)
         return float(result.get("balance", 0)) / 1e6  # USDC has 6 decimals
 
