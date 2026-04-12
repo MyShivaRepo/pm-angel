@@ -52,6 +52,7 @@ def _rebuild_clob() -> None:
             api_key=settings.clob_api_key,
             api_secret=settings.clob_api_secret,
             api_passphrase=settings.clob_api_passphrase,
+            funder=settings.proxy_wallet,
         )
     else:
         clob = None
@@ -66,6 +67,33 @@ async def lifespan(app: FastAPI):
     await init_db(settings.db_path)
     # Load credentials from DB
     await settings.load_from_db()
+    # Resolve proxy wallet if not yet stored
+    if settings.has_private_key and not settings.proxy_wallet:
+        try:
+            from eth_account import Account
+            eoa = Account.from_key(settings.private_key).address
+            profile = await gamma_api.get_public_profile(eoa)
+            proxy = profile.get("proxyWallet", "")
+            if proxy:
+                settings.proxy_wallet = proxy
+                await settings.save_to_db("proxy_wallet", proxy)
+                # Re-derive credentials with correct signature_type
+                temp_clob = ClobWrapper(
+                    host=settings.clob_host, private_key=settings.private_key,
+                    chain_id=settings.chain_id,
+                    api_key="", api_secret="", api_passphrase="",
+                    funder=proxy,
+                )
+                creds = await temp_clob.derive_api_creds(funder=proxy)
+                settings.clob_api_key = creds["api_key"]
+                settings.clob_api_secret = creds["api_secret"]
+                settings.clob_api_passphrase = creds["api_passphrase"]
+                await settings.save_to_db("clob_api_key", creds["api_key"])
+                await settings.save_to_db("clob_api_secret", creds["api_secret"])
+                await settings.save_to_db("clob_api_passphrase", creds["api_passphrase"])
+                logger.info("Proxy wallet resolved and credentials re-derived: %s", proxy)
+        except Exception as exc:
+            logger.warning("Could not resolve proxy wallet: %s", exc)
     _rebuild_clob()
     # Auto-populate suggested traders on first launch
     await _auto_suggest_traders()
@@ -279,15 +307,27 @@ async def save_private_key(private_key: str = Form(...)):
     await settings.save_to_db("private_key", pk)
     logger.info("Private key saved to database")
 
-    # Auto-derive API credentials
+    # Resolve proxy wallet and auto-derive API credentials
     try:
+        # Get proxy wallet address
+        from eth_account import Account
+        eoa = Account.from_key(pk).address
+        profile = await gamma_api.get_public_profile(eoa)
+        proxy = profile.get("proxyWallet", "")
+        if proxy:
+            settings.proxy_wallet = proxy
+            await settings.save_to_db("proxy_wallet", proxy)
+            logger.info("Proxy wallet found: %s", proxy)
+
+        # Derive credentials with signature_type=1 (Magic Link) and funder=proxy
         temp_clob = ClobWrapper(
             host=settings.clob_host,
             private_key=pk,
             chain_id=settings.chain_id,
             api_key="", api_secret="", api_passphrase="",
+            funder=proxy,
         )
-        creds = await temp_clob.derive_api_creds()
+        creds = await temp_clob.derive_api_creds(funder=proxy)
         settings.clob_api_key = creds["api_key"]
         settings.clob_api_secret = creds["api_secret"]
         settings.clob_api_passphrase = creds["api_passphrase"]
@@ -295,7 +335,7 @@ async def save_private_key(private_key: str = Form(...)):
         await settings.save_to_db("clob_api_secret", creds["api_secret"])
         await settings.save_to_db("clob_api_passphrase", creds["api_passphrase"])
         _rebuild_clob()
-        logger.info("API credentials auto-derived and saved")
+        logger.info("API credentials auto-derived and saved (proxy=%s)", proxy)
         return HTMLResponse(
             '<p class="text-success">Cle privee sauvegardee et credentials API generees automatiquement !</p>'
             '<script>setTimeout(function(){location.reload()},1500)</script>'

@@ -8,10 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClobWrapper:
-    """Thin async wrapper around py-clob-client (synchronous SDK).
-
-    All SDK calls run in a thread pool via asyncio.to_thread().
-    """
+    """Thin async wrapper around py-clob-client (synchronous SDK)."""
 
     def __init__(
         self,
@@ -21,6 +18,7 @@ class ClobWrapper:
         api_key: str,
         api_secret: str,
         api_passphrase: str,
+        funder: str = "",
     ):
         self._host = host
         self._private_key = private_key
@@ -28,6 +26,7 @@ class ClobWrapper:
         self._api_key = api_key
         self._api_secret = api_secret
         self._api_passphrase = api_passphrase
+        self._funder = funder
         self._client = None
 
     def _ensure_client(self):
@@ -37,28 +36,37 @@ class ClobWrapper:
         from py_clob_client.client import ClobClient
         from py_clob_client.clob_types import ApiCreds
 
-        self._client = ClobClient(
+        kwargs = dict(
             host=self._host,
             key=self._private_key,
             chain_id=self._chain_id,
-            signature_type=0,  # EOA signature (works with Magic Link exported key)
+            signature_type=1,  # POLY_PROXY for Magic Link email accounts
             creds=ApiCreds(
                 api_key=self._api_key,
                 api_secret=self._api_secret,
                 api_passphrase=self._api_passphrase,
             ),
         )
+        if self._funder:
+            kwargs["funder"] = self._funder
+
+        self._client = ClobClient(**kwargs)
         return self._client
 
-    async def derive_api_creds(self) -> dict[str, str]:
-        """Derive API credentials from private key (one-time setup)."""
+    async def derive_api_creds(self, funder: str = "") -> dict[str, str]:
+        """Derive API credentials from private key."""
         from py_clob_client.client import ClobClient
 
-        client = ClobClient(
+        kwargs = dict(
             host=self._host,
             key=self._private_key,
             chain_id=self._chain_id,
+            signature_type=1,
         )
+        if funder:
+            kwargs["funder"] = funder
+
+        client = ClobClient(**kwargs)
         creds = await asyncio.to_thread(client.create_or_derive_api_creds)
         return {
             "api_key": creds.api_key,
@@ -79,14 +87,16 @@ class ClobWrapper:
         from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
 
         client = self._ensure_client()
-        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=0)
+        params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=1)
         result = await asyncio.to_thread(client.get_balance_allowance, params)
-        return float(result.get("balance", 0)) / 1e6  # USDC has 6 decimals
+        return float(result.get("balance", 0)) / 1e6
 
     async def get_midpoint(self, token_id: str) -> float:
         client = self._ensure_client()
-        mid = await asyncio.to_thread(client.get_midpoint, token_id)
-        return float(mid)
+        result = await asyncio.to_thread(client.get_midpoint, token_id)
+        if isinstance(result, dict):
+            return float(result.get("mid", 0))
+        return float(result)
 
     async def place_market_order(
         self, token_id: str, amount_usd: float, side: str
@@ -116,17 +126,11 @@ class ClobWrapper:
 
         client = self._ensure_client()
 
-        side_enum = (
-            __import__("py_clob_client.constants", fromlist=["BUY"]).BUY
-            if side.upper() == "BUY"
-            else __import__("py_clob_client.constants", fromlist=["SELL"]).SELL
-        )
-
         args = OrderArgs(
             token_id=token_id,
             price=price,
             size=size,
-            side=side_enum,
+            side=side.upper(),
         )
 
         signed = await asyncio.to_thread(client.create_order, args)

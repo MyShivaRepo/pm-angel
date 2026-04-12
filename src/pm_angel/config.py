@@ -27,6 +27,7 @@ class Settings:
     clob_api_key: str = ""
     clob_api_secret: str = ""
     clob_api_passphrase: str = ""
+    proxy_wallet: str = ""
     chain_id: int = 137
 
     # Target traders
@@ -93,6 +94,8 @@ class Settings:
                 self.clob_api_secret = row.value
             elif row.key == "clob_api_passphrase":
                 self.clob_api_passphrase = row.value
+            elif row.key == "proxy_wallet":
+                self.proxy_wallet = row.value
             elif row.key == "max_position_usd":
                 self.max_position_usd = float(row.value)
             elif row.key == "max_total_exposure_usd":
