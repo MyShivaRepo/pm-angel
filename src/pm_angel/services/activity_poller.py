@@ -60,8 +60,12 @@ class ActivityPoller:
         if self._running:
             return
         self._running = True
+        # Set last_seen to NOW so we only detect NEW trades from this point
+        now_ts = int(time.time())
+        for trader in self._targets:
+            self._last_seen[trader] = now_ts
         self._task = asyncio.create_task(self._poll_loop())
-        logger.info("Activity poller started for %d traders", len(self._targets))
+        logger.info("Activity poller started for %d traders (ignoring history before %d)", len(self._targets), now_ts)
 
     def stop(self) -> None:
         self._running = False

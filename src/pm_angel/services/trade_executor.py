@@ -72,11 +72,19 @@ class TradeExecutor:
         amount = trade.usd_size * self._scale
         amount = max(self._min_order, min(amount, self._max_order))
 
-        # Get current price for slippage check
+        # Skip trades with no valid token_id
+        if not trade.token_id or len(trade.token_id) < 10:
+            logger.debug("Skipping trade with invalid token_id: %s", trade.market_title[:30])
+            return
+
+        # Get current price - if midpoint fails, market is likely closed
         try:
             current_price = await self._clob.get_midpoint(trade.token_id)
         except Exception:
-            current_price = trade.price
+            logger.debug("Market closed or unavailable: %s", trade.market_title[:30])
+            from pm_angel.services.activity_log import activity_log
+            activity_log.add("warning", "execute", f"Marche indisponible, ignore", market=trade.market_title)
+            return
 
         # Risk check
         approved, reason = self._risk.check_order(

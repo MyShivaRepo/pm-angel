@@ -71,6 +71,12 @@ async def lifespan(app: FastAPI):
     await _auto_suggest_traders()
     # Sync existing Polymarket positions
     await _sync_positions()
+    # Auto-start bot if credentials are configured
+    if settings.has_credentials:
+        traders = await _get_tracked_addresses()
+        if traders:
+            await start_bot()
+            logger.info("Bot auto-started with %d traders", len(traders))
     logger.info("PM Angel started on %s:%d", settings.host, settings.port)
     yield
     await _stop_bot()
