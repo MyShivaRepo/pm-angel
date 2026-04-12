@@ -534,7 +534,10 @@ async def _get_bets() -> list[Bet]:
         return []
     async with db.async_session() as session:
         result = await session.execute(
-            select(Bet).order_by(Bet.created_at.desc()).limit(100)
+            select(Bet)
+            .where(Bet.status.in_(["pending", "active", "settled"]))
+            .order_by(Bet.created_at.desc())
+            .limit(100)
         )
         return list(result.scalars().all())
 

@@ -72,6 +72,21 @@ class TradeExecutor:
         amount = trade.usd_size * self._scale
         amount = max(self._min_order, min(amount, self._max_order))
 
+        # Check real wallet balance before anything
+        try:
+            balance = await self._clob.get_balance()
+            if amount > balance:
+                amount = balance - 0.50  # Keep $0.50 buffer for gas
+            if amount < self._min_order:
+                logger.warning(
+                    "Insufficient balance: $%.2f available, $%.2f needed",
+                    balance, self._min_order
+                )
+                return  # Skip silently, don't save failed bet
+        except Exception:
+            logger.warning("Could not check balance, skipping trade")
+            return
+
         # Get current price for slippage check
         try:
             current_price = await self._clob.get_midpoint(trade.token_id)
