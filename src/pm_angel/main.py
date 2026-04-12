@@ -427,24 +427,23 @@ async def _price_update_loop():
 
 # --- Trader Management ---
 
-@app.post("/api/traders", response_class=HTMLResponse)
+@app.post("/api/traders")
 async def add_trader(request: Request, address: str = Form(...)):
     address = address.strip()
     if not address.startswith("0x") or len(address) < 10:
-        return HTMLResponse('<p class="text-warning">Adresse invalide</p>')
+        return JSONResponse({"error": "Adresse invalide"}, status_code=400)
 
     if db.async_session is None:
-        return HTMLResponse('<p class="text-warning">Database not ready</p>')
+        return JSONResponse({"error": "Database not ready"}, status_code=500)
 
     async with db.async_session() as session:
         existing = await session.execute(
             select(TrackedTrader).where(TrackedTrader.address == address)
         )
         if existing.scalar_one_or_none():
-            return await _render_traders_list(request)
+            return JSONResponse({"status": "already_tracked"})
 
         trader = TrackedTrader(address=address)
-        # Try to fetch username
         try:
             profile = await gamma_api.get_public_profile(address)
             trader.username = profile.get("name", profile.get("username", ""))
@@ -454,22 +453,16 @@ async def add_trader(request: Request, address: str = Form(...)):
         session.add(trader)
         await session.commit()
 
-    # Add to active poller if running
     if poller and poller.is_running:
         poller.add_trader(address)
 
-    return await _render_traders_list(request)
+    return JSONResponse({"status": "added"})
 
 
-@app.get("/api/traders/list", response_class=HTMLResponse)
-async def traders_list(request: Request):
-    return await _render_traders_list(request)
-
-
-@app.delete("/api/traders/{address}", response_class=HTMLResponse)
+@app.delete("/api/traders/{address}")
 async def remove_trader(request: Request, address: str):
     if db.async_session is None:
-        return HTMLResponse("")
+        return JSONResponse({"error": "Database not ready"}, status_code=500)
 
     async with db.async_session() as session:
         result = await session.execute(
@@ -483,42 +476,9 @@ async def remove_trader(request: Request, address: str):
     if poller:
         poller.remove_trader(address)
 
-    return await _render_traders_list(request)
+    return JSONResponse({"status": "removed"})
 
 
-@app.post("/api/traders/refresh-suggestions", response_class=HTMLResponse)
-async def refresh_suggestions():
-    """Fetch top traders from leaderboard and add them automatically."""
-    count = await _auto_suggest_traders(force=True)
-    return HTMLResponse(
-        f'<p class="text-success">{count} traders ajoutes depuis le leaderboard !</p>'
-    )
-
-
-async def _render_traders_list(request: Request) -> HTMLResponse:
-    traders = await _get_tracked_traders()
-    if not traders:
-        return HTMLResponse(
-            '<p class="text-muted" style="padding:1rem 0;">Aucun trader suivi. '
-            'Cliquez "Ajouter les meilleurs traders" pour en ajouter automatiquement.</p>'
-        )
-
-    html_parts = []
-    for t in traders:
-        pnl_class = "positive" if t.pnl >= 0 else "negative" if t.pnl < 0 else ""
-        pnl_str = f' | PnL: <span class="{pnl_class}">${t.pnl:,.0f}</span>' if t.pnl else ""
-        html_parts.append(
-            f'<div class="trader-item">'
-            f'  <div class="trader-info">'
-            f'    <span class="trader-name">{t.username or "Anonyme"}{pnl_str}</span>'
-            f'    <span class="trader-address">{t.address}</span>'
-            f'  </div>'
-            f'  <button class="btn btn-sm btn-danger" '
-            f'    hx-delete="/api/traders/{t.address}" '
-            f'    hx-target="#traders-list" hx-swap="innerHTML">Retirer</button>'
-            f'</div>'
-        )
-    return HTMLResponse("\n".join(html_parts))
 
 
 # --- Settings API ---
