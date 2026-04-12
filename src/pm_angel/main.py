@@ -120,6 +120,23 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 # --- Page Routes ---
 
+@app.get("/top-traders", response_class=HTMLResponse)
+async def top_traders_page(request: Request):
+    return templates.TemplateResponse(request, "top_traders.html", context={
+        "active_page": "top_traders",
+    })
+
+
+@app.get("/analysis", response_class=HTMLResponse)
+async def analysis_page(request: Request):
+    from pm_angel.services.activity_log import activity_log
+    entries = activity_log.get_detected_trades(limit=100)
+    return templates.TemplateResponse(request, "analysis.html", context={
+        "active_page": "analysis",
+        "entries": entries,
+    })
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     stats = await _get_stats()
@@ -128,8 +145,6 @@ async def dashboard(request: Request):
         "active_page": "dashboard",
         "stats": stats,
         "bets": bets,
-        "has_credentials": settings.has_credentials,
-        "bot_running": poller is not None and poller.is_running,
     })
 
 
@@ -137,52 +152,20 @@ async def dashboard(request: Request):
 async def settings_page(request: Request):
     return templates.TemplateResponse(request, "settings.html", context={
         "active_page": "settings",
-        "settings": settings,
-        "has_private_key": settings.has_private_key,
         "has_credentials": settings.has_credentials,
         "bot_running": poller is not None and poller.is_running,
-        "pk_masked": _mask_key(settings.private_key) if settings.private_key else "",
-    })
-
-
-@app.get("/analysis", response_class=HTMLResponse)
-async def analysis_page(request: Request):
-    from pm_angel.services.activity_log import activity_log
-
-    traders = await _get_tracked_traders()
-    entries = activity_log.get_entries(limit=50)
-    detected = len([e for e in activity_log.get_entries(limit=500) if e.category == "detect"])
-    executed = len([e for e in activity_log.get_entries(limit=500) if e.category == "execute" and e.level == "success"])
-
-    return templates.TemplateResponse(request, "analysis.html", context={
-        "active_page": "analysis",
-        "bot_running": poller is not None and poller.is_running,
-        "traders": traders,
-        "entries": entries,
-        "detected_count": detected,
-        "executed_count": executed,
-        "risk": risk_manager.get_summary(),
-    })
-
-
-@app.get("/api/analysis/log", response_class=HTMLResponse)
-async def analysis_log(request: Request, category: str | None = None):
-    from pm_angel.services.activity_log import activity_log
-
-    entries = activity_log.get_entries(limit=50, category=category)
-    return templates.TemplateResponse(request, "partials/log_entries.html", context={
-        "entries": entries,
-    })
-
-
-@app.get("/leaderboard", response_class=HTMLResponse)
-async def leaderboard_page(request: Request):
-    return templates.TemplateResponse(request, "leaderboard.html", context={
-        "active_page": "leaderboard",
     })
 
 
 # --- HTMX API Routes ---
+
+@app.get("/api/detected-trades", response_class=HTMLResponse)
+async def detected_trades(request: Request):
+    from pm_angel.services.activity_log import activity_log
+    entries = activity_log.get_detected_trades(limit=100)
+    return templates.TemplateResponse(request, "partials/detected_trades.html", context={
+        "entries": entries,
+    })
 
 @app.get("/api/bets/table", response_class=HTMLResponse)
 async def bets_table(request: Request):
@@ -212,7 +195,7 @@ async def status_bar(request: Request):
     })
 
 
-@app.get("/api/leaderboard", response_class=HTMLResponse)
+@app.get("/api/top-traders", response_class=HTMLResponse)
 async def leaderboard_data(
     request: Request,
     category: str = "OVERALL",

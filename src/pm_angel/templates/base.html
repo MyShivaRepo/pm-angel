@@ -11,10 +11,10 @@
     <nav class="navbar">
         <div class="nav-brand">PM Angel</div>
         <div class="nav-links">
-            <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/top-traders" class="nav-link {% if active_page == 'top_traders' %}active{% endif %}">Top Traders</a>
             <a href="/analysis" class="nav-link {% if active_page == 'analysis' %}active{% endif %}">Analysis</a>
+            <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
             <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
-            <a href="/leaderboard" class="nav-link {% if active_page == 'leaderboard' %}active{% endif %}">Leaderboard</a>
         </div>
         <div id="status-bar" hx-get="/api/status" hx-trigger="load, every 10s" hx-swap="innerHTML">
             <span class="status-dot offline"></span> Loading...

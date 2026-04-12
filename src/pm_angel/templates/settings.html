@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="settings">
-    <h1>Configuration</h1>
+    <h1>Settings</h1>
 
-    <!-- Credentials -->
+    <!-- Connection -->
     <section class="settings-section">
         <h2>Connexion Polymarket</h2>
         {% if has_credentials %}
@@ -11,7 +11,6 @@
             <details style="margin-top: 0.5rem;">
                 <summary class="text-muted" style="cursor: pointer; font-size: 0.85rem;">Reconfigurer</summary>
                 <div style="margin-top: 0.75rem;">
-                    <p class="help-text">Saisissez votre cle privee Polymarket.</p>
                     <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML">
                         <div class="form-row">
                             <input type="password" name="private_key" placeholder="Cle privee (64 caracteres hex)" class="input" required>
@@ -27,8 +26,7 @@
                 <ol style="margin: 0.5rem 0; padding-left: 1.25rem;">
                     <li>Allez sur <a href="https://reveal.magic.link/polymarket" target="_blank" style="color: var(--primary);">reveal.magic.link/polymarket</a></li>
                     <li>Connectez-vous avec le <strong>meme email ou compte Google</strong> que votre compte Polymarket</li>
-                    <li>Copiez la cle privee affichee</li>
-                    <li>Collez-la ci-dessous</li>
+                    <li>Copiez la cle privee affichee et collez-la ci-dessous</li>
                 </ol>
             </div>
             <form hx-post="/api/setup/private-key" hx-target="#pk-result" hx-swap="innerHTML">
@@ -61,63 +59,6 @@
                 <span class="text-muted" style="margin-left: 0.5rem;">Connectez-vous a Polymarket d'abord</span>
             {% endif %}
         </div>
-    </section>
-
-    <!-- Traders -->
-    <section class="settings-section">
-        <h2>Traders suivis</h2>
-        <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
-            <form hx-post="/api/traders" hx-target="#traders-list" hx-swap="innerHTML"
-                  hx-on::after-request="this.reset()" style="flex: 1; min-width: 250px;">
-                <div class="form-row">
-                    <input type="text" name="address" placeholder="Adresse wallet (0x...)" class="input">
-                    <button type="submit" class="btn btn-secondary">Ajouter</button>
-                </div>
-            </form>
-            <button class="btn btn-primary"
-                    hx-post="/api/traders/refresh-suggestions" hx-target="#suggest-result" hx-swap="innerHTML">
-                Ajouter les meilleurs traders
-            </button>
-        </div>
-        <div id="suggest-result"></div>
-        <div id="traders-list" hx-get="/api/traders/list" hx-trigger="load" hx-swap="innerHTML">
-        </div>
-    </section>
-
-    <!-- Risk Parameters -->
-    <section class="settings-section">
-        <h2>Parametres de risque</h2>
-        <form hx-post="/api/settings" hx-swap="none"
-              hx-on::after-request="alert('Parametres sauvegardes')">
-            <div class="form-grid">
-                <label>
-                    Max par marche (USD)
-                    <input type="number" name="max_position_usd" value="{{ settings.max_position_usd }}"
-                           step="1" min="1" class="input">
-                </label>
-                <label>
-                    Exposition totale max (USD)
-                    <input type="number" name="max_total_exposure_usd" value="{{ settings.max_total_exposure_usd }}"
-                           step="1" min="1" class="input">
-                </label>
-                <label>
-                    Perte journaliere max (USD)
-                    <input type="number" name="daily_loss_limit_usd" value="{{ settings.daily_loss_limit_usd }}"
-                           step="1" min="1" class="input">
-                </label>
-                <label>
-                    Facteur de scaling
-                    <input type="number" name="position_scale_factor" value="{{ settings.position_scale_factor }}"
-                           step="0.01" min="0.01" max="1" class="input">
-                </label>
-                <label>
-                    Intervalle polling (sec)
-                    <input type="number" name="poll_interval_seconds" value="{{ settings.poll_interval_seconds }}"
-                           step="1" min="5" class="input">
-                </label>
-            </div>
-            <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Sauvegarder</button>
-        </form>
     </section>
 </div>
 {% endblock %}

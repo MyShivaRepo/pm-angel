@@ -97,6 +97,7 @@ class TradeExecutor:
             logger.debug("Market closed or unavailable: %s", trade.market_title[:30])
             from pm_angel.services.activity_log import activity_log
             activity_log.add("warning", "execute", f"Marche indisponible, ignore", market=trade.market_title)
+            activity_log.market_skipped(trade.market_title)
             return
 
         # Risk check

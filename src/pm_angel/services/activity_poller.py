@@ -131,7 +131,7 @@ class ActivityPoller:
                 from pm_angel.services.activity_log import activity_log
                 activity_log.detect(
                     trade.trader_address, trade.market_title,
-                    trade.side, trade.usd_size, trade.price,
+                    trade.side, trade.outcome, trade.usd_size, trade.price,
                 )
                 new_count += 1
 

@@ -2,85 +2,10 @@
 {% block content %}
 <div class="analysis">
     <h1>Analysis</h1>
+    <p class="help-text">Trades detectes chez les traders suivis. Le bot analyse ces opportunites avant de prendre position.</p>
 
-    <div class="summary-cards">
-        <div class="card">
-            <div class="card-label">Statut bot</div>
-            <div class="card-value">{{ "Actif" if bot_running else "Arrete" }}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Traders suivis</div>
-            <div class="card-value">{{ traders|length }}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Trades detectes</div>
-            <div class="card-value">{{ detected_count }}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Ordres executes</div>
-            <div class="card-value">{{ executed_count }}</div>
-        </div>
+    <div id="detected-trades" hx-get="/api/detected-trades" hx-trigger="load, every 10s" hx-swap="innerHTML">
+        {% include "partials/detected_trades.html" %}
     </div>
-
-    <!-- Risk Summary -->
-    <section class="settings-section">
-        <h2>Limites de risque</h2>
-        <div class="risk-bars">
-            {% set exp_pct = (risk.total_exposure / risk.limits.max_total_exposure_usd * 100) if risk.limits.max_total_exposure_usd else 0 %}
-            {% set loss_pct = (-risk.daily_pnl / risk.limits.daily_loss_limit_usd * 100) if risk.limits.daily_loss_limit_usd and risk.daily_pnl < 0 else 0 %}
-            <div class="risk-item">
-                <div class="risk-label">Exposition : ${{ "%.2f"|format(risk.total_exposure) }} / ${{ "%.0f"|format(risk.limits.max_total_exposure_usd) }}</div>
-                <div class="progress-bar"><div class="progress-fill" style="width: {{ [exp_pct, 100]|min }}%; background: {{ 'var(--danger)' if exp_pct > 80 else 'var(--primary)' }}"></div></div>
-            </div>
-            <div class="risk-item">
-                <div class="risk-label">Perte du jour : ${{ "%.2f"|format(risk.daily_pnl) }} / -${{ "%.0f"|format(risk.limits.daily_loss_limit_usd) }}</div>
-                <div class="progress-bar"><div class="progress-fill" style="width: {{ [loss_pct, 100]|min }}%; background: {{ 'var(--danger)' if loss_pct > 80 else 'var(--warning)' }}"></div></div>
-            </div>
-        </div>
-        {% if risk.positions %}
-        <h3 style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">Exposition par marche</h3>
-        <div class="positions-list">
-            {% for cid, amount in risk.positions.items() %}
-            <div class="trader-item">
-                <span class="trader-address">{{ cid[:20] }}...</span>
-                <span>${{ "%.2f"|format(amount) }} / ${{ "%.0f"|format(risk.limits.max_position_usd) }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    </section>
-
-    <!-- Traders Activity -->
-    <section class="settings-section">
-        <h2>Traders suivis</h2>
-        <table class="bets-table">
-            <thead>
-                <tr><th>Trader</th><th>Adresse</th><th>PnL</th><th>Volume</th></tr>
-            </thead>
-            <tbody>
-                {% for t in traders %}
-                <tr>
-                    <td>{{ t.username or "Anonyme" }}</td>
-                    <td class="trader-addr">{{ t.address[:16] }}...</td>
-                    <td class="{% if t.pnl >= 0 %}positive{% else %}negative{% endif %}">${{ "%.0f"|format(t.pnl) }}</td>
-                    <td>${{ "%.0f"|format(t.volume) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
-
-    <!-- Activity Log -->
-    <section class="settings-section">
-        <h2>Journal d'activite</h2>
-        <div class="filters" style="margin-bottom: 0.75rem;">
-            <button class="btn btn-sm btn-secondary" hx-get="/api/analysis/log" hx-target="#log-entries" hx-swap="innerHTML">Tout</button>
-            <button class="btn btn-sm btn-secondary" hx-get="/api/analysis/log?category=detect" hx-target="#log-entries" hx-swap="innerHTML">Detections</button>
-            <button class="btn btn-sm btn-secondary" hx-get="/api/analysis/log?category=risk" hx-target="#log-entries" hx-swap="innerHTML">Risque</button>
-            <button class="btn btn-sm btn-secondary" hx-get="/api/analysis/log?category=execute" hx-target="#log-entries" hx-swap="innerHTML">Ordres</button>
-        </div>
-        <div id="log-entries" hx-get="/api/analysis/log" hx-trigger="load, every 10s" hx-swap="innerHTML">
-        </div>
-    </section>
 </div>
 {% endblock %}

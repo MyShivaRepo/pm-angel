@@ -1,18 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="leaderboard">
-    <h1>Leaderboard Polymarket</h1>
+<div class="top-traders">
+    <h1>Top Traders</h1>
 
     <div class="filters">
-        <select id="category" class="input" hx-get="/api/leaderboard" hx-target="#leaderboard-body"
+        <select id="category" class="input" hx-get="/api/top-traders" hx-target="#traders-body"
                 hx-include="#category, #time-period" hx-trigger="change" name="category">
             <option value="OVERALL">Tous</option>
             <option value="POLITICS">Politique</option>
             <option value="SPORTS">Sports</option>
             <option value="CRYPTO">Crypto</option>
             <option value="CULTURE">Culture</option>
+            <option value="ECONOMICS">Economie</option>
+            <option value="TECH">Tech</option>
         </select>
-        <select id="time-period" class="input" hx-get="/api/leaderboard" hx-target="#leaderboard-body"
+        <select id="time-period" class="input" hx-get="/api/top-traders" hx-target="#traders-body"
                 hx-include="#category, #time-period" hx-trigger="change" name="time_period">
             <option value="MONTH">Mois</option>
             <option value="WEEK">Semaine</option>
@@ -25,14 +27,15 @@
         <thead>
             <tr>
                 <th>#</th>
-                <th>Trader</th>
-                <th>PnL</th>
+                <th>Nom</th>
+                <th>Adresse</th>
+                <th>PNL</th>
                 <th>Volume</th>
                 <th>Action</th>
             </tr>
         </thead>
-        <tbody id="leaderboard-body" hx-get="/api/leaderboard" hx-trigger="load" hx-swap="innerHTML">
-            <tr><td colspan="5" class="empty-state">Chargement...</td></tr>
+        <tbody id="traders-body" hx-get="/api/top-traders" hx-trigger="load" hx-swap="innerHTML">
+            <tr><td colspan="6" class="empty-state">Chargement...</td></tr>
         </tbody>
     </table>
 </div>

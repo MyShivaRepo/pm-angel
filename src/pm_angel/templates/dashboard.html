@@ -1,17 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="dashboard">
-    <h1>Tableau des Paris</h1>
-
-    {% if not has_credentials %}
-    <div class="alert alert-warning">
-        Credentials API non configurees. <a href="/settings">Allez dans Settings</a> pour configurer votre cle privee et generer vos credentials.
-    </div>
-    {% elif not bot_running %}
-    <div class="alert alert-info">
-        Le bot est arrete. <a href="/settings">Demarrez-le depuis Settings</a> pour commencer a copier les trades.
-    </div>
-    {% endif %}
+    <h1>Dashboard</h1>
 
     <div class="summary-cards">
         <div class="card">
@@ -27,27 +17,15 @@
             <div class="card-value">${{ "%.2f"|format(stats.positions_value) }}</div>
         </div>
         <div class="card">
-            <div class="card-label">Positions actives</div>
-            <div class="card-value" id="active-count">{{ stats.active_count }}</div>
-        </div>
-        <div class="card">
             <div class="card-label">PnL Total</div>
             <div class="card-value {% if stats.total_pnl >= 0 %}positive{% else %}negative{% endif %}">
                 ${{ "%.2f"|format(stats.total_pnl) }}
             </div>
         </div>
-        <div class="card">
-            <div class="card-label">Exposition</div>
-            <div class="card-value">${{ "%.2f"|format(stats.total_exposure) }}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Traders suivis</div>
-            <div class="card-value">{{ stats.tracked_traders }}</div>
-        </div>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Historique</h2>
+        <h2 style="margin: 0;">Paris pris</h2>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
             <div id="sync-result"></div>
             <button class="btn btn-secondary btn-sm"
