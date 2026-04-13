@@ -17,6 +17,7 @@ class DetectedTrade:
     trader_address: str
     condition_id: str
     token_id: str
+    trader_name: str
     side: str
     size: float
     usd_size: float
@@ -130,7 +131,7 @@ class ActivityPoller:
                 )
                 from pm_angel.services.activity_log import activity_log
                 activity_log.detect(
-                    trade.trader_address, trade.market_title,
+                    trade.trader_name, trade.market_title,
                     trade.side, trade.outcome, trade.usd_size, trade.price,
                 )
                 new_count += 1
@@ -183,8 +184,11 @@ class ActivityPoller:
             if not market_title:
                 market_title = condition_id[:16]
 
+            trader_name = activity.get("name", activity.get("pseudonym", trader_address[:12]))
+
             return DetectedTrade(
                 trader_address=trader_address,
+                trader_name=trader_name,
                 condition_id=condition_id,
                 token_id=token_id,
                 side=side,
