@@ -36,6 +36,7 @@ class TradeExecutor:
         self._max_order = settings.max_position_usd
         self._running = False
         self._task: asyncio.Task | None = None
+        self._active_markets: set[str] = set()  # condition_ids with active bets
 
     @property
     def is_running(self) -> bool:
@@ -46,7 +47,23 @@ class TradeExecutor:
             return
         self._running = True
         self._task = asyncio.create_task(self._run(trade_queue))
+        # Load existing active markets from DB
+        asyncio.create_task(self._load_active_markets())
         logger.info("Trade executor started")
+
+    async def _load_active_markets(self) -> None:
+        if db.async_session is None:
+            return
+        try:
+            async with db.async_session() as session:
+                result = await session.execute(
+                    select(Bet.condition_id).where(Bet.status == "active").distinct()
+                )
+                for row in result.scalars().all():
+                    self._active_markets.add(row)
+            logger.info("Loaded %d active markets from DB", len(self._active_markets))
+        except Exception:
+            logger.exception("Failed to load active markets")
 
     def stop(self) -> None:
         self._running = False
@@ -68,18 +85,9 @@ class TradeExecutor:
                 logger.exception("Error processing trade")
 
     async def _process_trade(self, trade: DetectedTrade) -> None:
-        # Skip if we already have an active bet on this market
-        if db.async_session is not None:
-            async with db.async_session() as session:
-                existing = await session.execute(
-                    select(Bet).where(
-                        Bet.condition_id == trade.condition_id,
-                        Bet.status == "active",
-                    )
-                )
-                if existing.scalar_one_or_none():
-                    logger.debug("Already have active bet on: %s", trade.market_title[:30])
-                    return
+        # Skip if we already have an active bet on this market (instant in-memory check)
+        if trade.condition_id in self._active_markets:
+            return
 
         # Calculate scaled order size
         amount = trade.usd_size * self._scale
@@ -134,6 +142,7 @@ class TradeExecutor:
                 trade.side, trade.market_title[:30], amount, result
             )
             activity_log.order_success(trade.market_title, trade.side, amount)
+            self._active_markets.add(trade.condition_id)
             await self._save_bet(trade, amount, current_price, status="active")
         except Exception as exc:
             logger.error("Order execution failed: %s", exc)
