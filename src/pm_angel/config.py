@@ -96,6 +96,8 @@ class Settings:
                 self.clob_api_passphrase = row.value
             elif row.key == "proxy_wallet":
                 self.proxy_wallet = row.value
+            elif row.key == "min_order_usd":
+                self.min_order_usd = float(row.value)
             elif row.key == "max_position_usd":
                 self.max_position_usd = float(row.value)
             elif row.key == "max_total_exposure_usd":

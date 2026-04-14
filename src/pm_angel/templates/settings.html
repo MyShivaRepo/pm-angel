@@ -60,5 +60,50 @@
             {% endif %}
         </div>
     </section>
+
+    <!-- Risk Parameters -->
+    <section class="settings-section">
+        <h2>Parametres de risque</h2>
+        <form hx-post="/api/settings" hx-swap="none"
+              hx-on::after-request="alert('Parametres sauvegardes')">
+            <div class="form-grid">
+                <label>
+                    Montant min par trade (USD)
+                    <input type="number" name="min_order_usd" value="{{ settings.min_order_usd }}"
+                           step="0.5" min="1" class="input">
+                </label>
+                <label>
+                    Montant max par trade (USD)
+                    <input type="number" name="max_position_usd" value="{{ settings.max_position_usd }}"
+                           step="1" min="1" class="input">
+                </label>
+                <label>
+                    Exposition totale max (USD)
+                    <input type="number" name="max_total_exposure_usd" value="{{ settings.max_total_exposure_usd }}"
+                           step="1" min="1" class="input">
+                </label>
+                <label>
+                    Perte journaliere max (USD)
+                    <input type="number" name="daily_loss_limit_usd" value="{{ settings.daily_loss_limit_usd }}"
+                           step="1" min="1" class="input">
+                </label>
+                <label>
+                    Facteur de scaling
+                    <input type="number" name="position_scale_factor" value="{{ settings.position_scale_factor }}"
+                           step="0.01" min="0.01" max="1" class="input">
+                </label>
+                <label>
+                    Intervalle polling (sec)
+                    <input type="number" name="poll_interval_seconds" value="{{ settings.poll_interval_seconds }}"
+                           step="1" min="5" class="input">
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Sauvegarder</button>
+        </form>
+        <div class="help-text" style="margin-top: 0.75rem;">
+            <p><strong>Montant par trade</strong> : le bot calcule d'abord <code>taille_trader_copie × scaling</code>, puis applique les limites min/max.</p>
+            <p>Exemple : trader copie mise $5000, scaling=0.01 → $50, borne a max=$20 → trade de $20.</p>
+        </div>
+    </section>
 </div>
 {% endblock %}

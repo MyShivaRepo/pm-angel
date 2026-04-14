@@ -154,6 +154,7 @@ async def settings_page(request: Request):
         "active_page": "settings",
         "has_credentials": settings.has_credentials,
         "bot_running": poller is not None and poller.is_running,
+        "settings": settings,
     })
 
 
@@ -485,12 +486,14 @@ async def remove_trader(request: Request, address: str):
 
 @app.post("/api/settings")
 async def update_settings(
+    min_order_usd: float = Form(1),
     max_position_usd: float = Form(100),
     max_total_exposure_usd: float = Form(500),
     daily_loss_limit_usd: float = Form(50),
     position_scale_factor: float = Form(0.1),
     poll_interval_seconds: float = Form(15),
 ):
+    settings.min_order_usd = min_order_usd
     settings.max_position_usd = max_position_usd
     settings.max_total_exposure_usd = max_total_exposure_usd
     settings.daily_loss_limit_usd = daily_loss_limit_usd
@@ -498,17 +501,21 @@ async def update_settings(
     settings.poll_interval_seconds = poll_interval_seconds
 
     # Persist to DB
+    await settings.save_to_db("min_order_usd", str(min_order_usd))
     await settings.save_to_db("max_position_usd", str(max_position_usd))
     await settings.save_to_db("max_total_exposure_usd", str(max_total_exposure_usd))
     await settings.save_to_db("daily_loss_limit_usd", str(daily_loss_limit_usd))
     await settings.save_to_db("position_scale_factor", str(position_scale_factor))
     await settings.save_to_db("poll_interval_seconds", str(poll_interval_seconds))
 
-    # Update risk manager
+    # Update risk manager and executor
+    risk_manager._min_order_usd = min_order_usd
     risk_manager._max_position_usd = max_position_usd
     risk_manager._max_total_exposure = max_total_exposure_usd
     risk_manager._daily_loss_limit = daily_loss_limit_usd
-    risk_manager._min_order_usd = settings.min_order_usd
+    if executor:
+        executor._min_order = min_order_usd
+        executor._max_order = max_position_usd
 
     return JSONResponse({"status": "saved"})
 
