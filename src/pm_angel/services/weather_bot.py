@@ -236,6 +236,7 @@ class WeatherBot:
             target_price = 0.0
 
             ev_slug = m.get("eventSlug") or m.get("eventTitle") or ""
+            is_neg_risk = bool(m.get("negRisk"))
 
             if cid in self._active_markets:
                 decision_str = "SKIP"
@@ -246,6 +247,9 @@ class WeatherBot:
             elif ev_slug and ev_slug in self._cycle_event_bets:
                 decision_str = "SKIP"
                 reason = "Pari deja place sur cet event ce cycle"
+            elif is_neg_risk:
+                decision_str = "SKIP"
+                reason = "Marche NegRisk non supporte (Magic Link)"
             elif best_edge < min_edge:
                 decision_str = "SKIP"
                 reason = f"Edge {best_edge*100:.1f}% < seuil {min_edge*100:.0f}%"

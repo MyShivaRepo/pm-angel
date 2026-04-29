@@ -80,11 +80,14 @@ class GammaApiClient:
         sub-markets (one per threshold). We list all active events
         and keep only those with a weather keyword in their title.
         """
-        REQUIRED_KEYWORDS = (
-            "temperature", " temp ", "hottest", "coldest", "warmest",
-            "rain", "rainfall", "precipit",
-            "snow", "snowfall",
-            "weather",
+        import re
+        # Word-boundary regex to avoid matching "Ukraine" → "rain"
+        KW_RE = re.compile(
+            r"\b(temperature|temp|hottest|coldest|warmest|"
+            r"rain|rainfall|precipit\w*|"
+            r"snow|snowfall|"
+            r"weather)\b",
+            re.IGNORECASE,
         )
 
         results: dict[str, dict] = {}
@@ -106,8 +109,8 @@ class GammaApiClient:
                 for ev in data:
                     if ev.get("closed") or ev.get("archived"):
                         continue
-                    ev_title_lower = (ev.get("title") or "").lower()
-                    if not any(kw in ev_title_lower for kw in REQUIRED_KEYWORDS):
+                    ev_title = ev.get("title") or ""
+                    if not KW_RE.search(ev_title):
                         continue
                     for m in ev.get("markets", []):
                         if m.get("closed") or m.get("archived"):
