@@ -7,17 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-CONFIG_KEYS = [
-    "private_key",
-    "clob_api_key",
-    "clob_api_secret",
-    "clob_api_passphrase",
-    "max_position_usd",
-    "max_total_exposure_usd",
-    "daily_loss_limit_usd",
-    "position_scale_factor",
-    "poll_interval_seconds",
-]
+DEFAULT_CITIES = ["London", "New York", "Paris", "Tokyo", "Seoul"]
 
 
 @dataclass
@@ -30,19 +20,15 @@ class Settings:
     proxy_wallet: str = ""
     chain_id: int = 137
 
-    # Target traders
-    target_traders: list[str] = field(default_factory=list)
-
-    # Polling
-    poll_interval_seconds: float = 15.0
+    # Strategy
+    cities: list[str] = field(default_factory=lambda: list(DEFAULT_CITIES))
+    min_edge_pct: float = 0.10
+    forecast_poll_minutes: float = 60.0
 
     # Risk
-    max_position_usd: float = 100.0
-    max_total_exposure_usd: float = 500.0
-    daily_loss_limit_usd: float = 50.0
-    position_scale_factor: float = 0.1
-    min_order_usd: float = 1.0
-    slippage_tolerance: float = 0.05
+    min_bet_usd: float = 1.0
+    max_bet_usd: float = 10.0
+    max_total_exposure_usd: float = 80.0
 
     # Server
     host: str = "0.0.0.0"
@@ -55,6 +41,7 @@ class Settings:
     clob_host: str = "https://clob.polymarket.com"
     data_api_host: str = "https://data-api.polymarket.com"
     gamma_api_host: str = "https://gamma-api.polymarket.com"
+    openmeteo_host: str = "https://api.open-meteo.com"
 
     @property
     def has_credentials(self) -> bool:
@@ -96,21 +83,22 @@ class Settings:
                 self.clob_api_passphrase = row.value
             elif row.key == "proxy_wallet":
                 self.proxy_wallet = row.value
-            elif row.key == "min_order_usd":
-                self.min_order_usd = float(row.value)
-            elif row.key == "max_position_usd":
-                self.max_position_usd = float(row.value)
+            elif row.key == "cities":
+                cities = [c.strip() for c in row.value.split(",") if c.strip()]
+                if cities:
+                    self.cities = cities
+            elif row.key == "min_edge_pct":
+                self.min_edge_pct = float(row.value)
+            elif row.key == "min_bet_usd":
+                self.min_bet_usd = float(row.value)
+            elif row.key == "max_bet_usd":
+                self.max_bet_usd = float(row.value)
             elif row.key == "max_total_exposure_usd":
                 self.max_total_exposure_usd = float(row.value)
-            elif row.key == "daily_loss_limit_usd":
-                self.daily_loss_limit_usd = float(row.value)
-            elif row.key == "position_scale_factor":
-                self.position_scale_factor = float(row.value)
-            elif row.key == "poll_interval_seconds":
-                self.poll_interval_seconds = float(row.value)
+            elif row.key == "forecast_poll_minutes":
+                self.forecast_poll_minutes = float(row.value)
 
     async def save_to_db(self, key: str, value: str) -> None:
-        """Save a single config key to database."""
         from pm_angel import database as db
         from pm_angel.models import AppConfig
         from sqlalchemy import select
@@ -128,20 +116,3 @@ class Settings:
             else:
                 session.add(AppConfig(key=key, value=value))
             await session.commit()
-
-    async def save_all_to_db(self) -> None:
-        """Save all config values to database."""
-        pairs = {
-            "private_key": self.private_key,
-            "clob_api_key": self.clob_api_key,
-            "clob_api_secret": self.clob_api_secret,
-            "clob_api_passphrase": self.clob_api_passphrase,
-            "max_position_usd": str(self.max_position_usd),
-            "max_total_exposure_usd": str(self.max_total_exposure_usd),
-            "daily_loss_limit_usd": str(self.daily_loss_limit_usd),
-            "position_scale_factor": str(self.position_scale_factor),
-            "poll_interval_seconds": str(self.poll_interval_seconds),
-        }
-        for k, v in pairs.items():
-            if v:
-                await self.save_to_db(k, v)

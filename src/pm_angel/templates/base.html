@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PM Angel - Polymarket Copy Trading</title>
+    <title>PM Angel - Weather Bot</title>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -11,9 +11,9 @@
     <nav class="navbar">
         <div class="nav-brand">PM Angel</div>
         <div class="nav-links">
-            <a href="/top-traders" class="nav-link {% if active_page == 'top_traders' %}active{% endif %}">Top Traders</a>
+            <a href="/markets" class="nav-link {% if active_page == 'markets' %}active{% endif %}">Markets</a>
             <a href="/analysis" class="nav-link {% if active_page == 'analysis' %}active{% endif %}">Analysis</a>
-            <a href="/" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
             <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
         </div>
         <div id="status-bar" hx-get="/api/status" hx-trigger="load, every 10s" hx-swap="innerHTML">

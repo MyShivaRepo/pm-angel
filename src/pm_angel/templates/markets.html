@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="markets">
+    <div class="page-header">
+        <h1>Markets meteo</h1>
+        <button class="btn btn-secondary btn-sm"
+                hx-post="/api/bot/run-once" hx-swap="none"
+                hx-on::after-request="htmx.trigger('#markets-tbody', 'load')">
+            Rafraichir maintenant
+        </button>
+    </div>
+    <p class="help-text">
+        Marches meteo detectes sur Polymarket avec leur prix, la prevision officielle Open-Meteo,
+        et l'edge calcule. Un edge positif indique une opportunite (cote sous-evalue).
+    </p>
+
+    <table class="bets-table">
+        <thead>
+            <tr>
+                <th>Marche</th>
+                <th>Ville</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Prix YES/NO</th>
+                <th>Prevision</th>
+                <th>Edge</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody id="markets-tbody"
+               hx-get="/api/markets/table"
+               hx-trigger="load, every 30s"
+               hx-swap="innerHTML">
+            <tr><td colspan="8" class="empty-state">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -99,9 +99,12 @@ class ClobWrapper:
         return float(result)
 
     async def place_market_order(
-        self, token_id: str, amount_usd: float, side: str
+        self, token_id: str, amount_usd: float, side: str,
+        neg_risk: bool | None = None,
     ) -> dict[str, Any]:
-        from py_clob_client.clob_types import MarketOrderArgs, OrderType
+        from py_clob_client.clob_types import (
+            MarketOrderArgs, OrderType, PartialCreateOrderOptions,
+        )
 
         client = self._ensure_client()
 
@@ -111,11 +114,15 @@ class ClobWrapper:
             side=side.upper(),
         )
 
-        signed = await asyncio.to_thread(client.create_market_order, args)
+        # Explicitly pass neg_risk when known (avoids SDK auto-detect failures
+        # that surface as 'order_version_mismatch' on multi-outcome markets).
+        options = PartialCreateOrderOptions(neg_risk=neg_risk) if neg_risk is not None else None
+
+        signed = await asyncio.to_thread(client.create_market_order, args, options)
         result = await asyncio.to_thread(client.post_order, signed, OrderType.FOK)
         logger.info(
-            "Market order placed: %s %s $%.2f -> %s",
-            side, token_id[:16], amount_usd, result
+            "Market order placed: %s %s $%.2f neg_risk=%s -> %s",
+            side, token_id[:16], amount_usd, neg_risk, result
         )
         return result
 

@@ -68,8 +68,67 @@ class GammaApiClient:
             params["active"] = "true"
         return await self._get("/markets", params)
 
-    async def search_markets(self, query: str) -> list[dict[str, Any]]:
-        return await self._get("/public-search", {"query": query})
+    async def search_markets(self, query: str) -> dict[str, Any]:
+        """Polymarket public search. Returns {events: [...], pagination: {...}}."""
+        return await self._get("/public-search", {"q": query})
+
+    async def get_weather_markets(self, limit: int = 200) -> list[dict[str, Any]]:
+        """Discover active weather markets via /events endpoint.
+
+        Polymarket weather markets are grouped under events like
+        "Highest temperature in Seoul on April 17?" with multiple
+        sub-markets (one per threshold). We list all active events
+        and keep only those with a weather keyword in their title.
+        """
+        import re
+        # Word-boundary regex to avoid matching "Ukraine" → "rain"
+        KW_RE = re.compile(
+            r"\b(temperature|temp|hottest|coldest|warmest|"
+            r"rain|rainfall|precipit\w*|"
+            r"snow|snowfall|"
+            r"weather)\b",
+            re.IGNORECASE,
+        )
+
+        results: dict[str, dict] = {}
+        # Iterate /events with offsets to cover everything (active markets
+        # change daily; cap at a few pages to keep things fast).
+        for offset in (0, 500, 1000):
+            try:
+                params: dict[str, Any] = {
+                    "active": "true",
+                    "closed": "false",
+                    "limit": 500,
+                    "offset": offset,
+                    "order": "endDate",
+                    "ascending": "true",
+                }
+                data = await self._get("/events", params)
+                if not isinstance(data, list) or not data:
+                    break
+                for ev in data:
+                    if ev.get("closed") or ev.get("archived"):
+                        continue
+                    ev_title = ev.get("title") or ""
+                    if not KW_RE.search(ev_title):
+                        continue
+                    for m in ev.get("markets", []):
+                        if m.get("closed") or m.get("archived"):
+                            continue
+                        cid = m.get("conditionId") or m.get("condition_id")
+                        if not cid:
+                            continue
+                        m.setdefault("eventTitle", ev.get("title", ""))
+                        m.setdefault("eventSlug", ev.get("slug", ""))
+                        m.setdefault("endDate", m.get("endDate") or ev.get("endDate"))
+                        results[cid] = m
+                        if len(results) >= limit:
+                            return list(results.values())
+            except Exception as exc:
+                logger.debug("get_weather_markets offset=%d failed: %s", offset, exc)
+                break
+
+        return list(results.values())
 
     async def get_public_profile(self, address: str) -> dict[str, Any]:
         return await self._get("/public-profile", {"address": address})
