@@ -42,6 +42,24 @@ CITIES: dict[str, dict] = {
     "Cairo": {"country": "EG", "lat": 30.0444, "lon": 31.2357, "aliases": ["cairo"]},
     "Lagos": {"country": "NG", "lat": 6.5244, "lon": 3.3792, "aliases": ["lagos"]},
     "Istanbul": {"country": "TR", "lat": 41.0082, "lon": 28.9784, "aliases": ["istanbul"]},
+    "Amsterdam": {"country": "NL", "lat": 52.3676, "lon": 4.9041, "aliases": ["amsterdam"]},
+    "Brussels": {"country": "BE", "lat": 50.8503, "lon": 4.3517, "aliases": ["brussels", "bruxelles"]},
+    "Vienna": {"country": "AT", "lat": 48.2082, "lon": 16.3738, "aliases": ["vienna", "wien"]},
+    "Stockholm": {"country": "SE", "lat": 59.3293, "lon": 18.0686, "aliases": ["stockholm"]},
+    "Oslo": {"country": "NO", "lat": 59.9139, "lon": 10.7522, "aliases": ["oslo"]},
+    "Copenhagen": {"country": "DK", "lat": 55.6761, "lon": 12.5683, "aliases": ["copenhagen"]},
+    "Helsinki": {"country": "FI", "lat": 60.1699, "lon": 24.9384, "aliases": ["helsinki"]},
+    "Dublin": {"country": "IE", "lat": 53.3498, "lon": -6.2603, "aliases": ["dublin"]},
+    "Lisbon": {"country": "PT", "lat": 38.7223, "lon": -9.1393, "aliases": ["lisbon", "lisboa"]},
+    "Athens": {"country": "GR", "lat": 37.9838, "lon": 23.7275, "aliases": ["athens"]},
+    "Warsaw": {"country": "PL", "lat": 52.2297, "lon": 21.0122, "aliases": ["warsaw"]},
+    "Prague": {"country": "CZ", "lat": 50.0755, "lon": 14.4378, "aliases": ["prague"]},
+    "Beijing": {"country": "CN", "lat": 39.9042, "lon": 116.4074, "aliases": ["beijing"]},
+    "Shanghai": {"country": "CN", "lat": 31.2304, "lon": 121.4737, "aliases": ["shanghai"]},
+    "Taipei": {"country": "TW", "lat": 25.0330, "lon": 121.5654, "aliases": ["taipei"]},
+    "Manila": {"country": "PH", "lat": 14.5995, "lon": 120.9842, "aliases": ["manila"]},
+    "Jakarta": {"country": "ID", "lat": -6.2088, "lon": 106.8456, "aliases": ["jakarta"]},
+    "Kuala Lumpur": {"country": "MY", "lat": 3.1390, "lon": 101.6869, "aliases": ["kuala lumpur"]},
 }
 
 
@@ -78,16 +96,22 @@ def _find_city(title: str) -> tuple[str, str, float, float] | None:
     return None
 
 
-_TEMP_THRESHOLD_RE = re.compile(r"(\d{1,3}(?:\.\d+)?)\s*(?:°|degrees?\s*)?(C|F|celsius|fahrenheit)?", re.IGNORECASE)
+_TEMP_THRESHOLD_RE = re.compile(
+    r"(\d{1,3}(?:\.\d+)?)\s*(?:°\s*(C|F)?|degrees?\s*(C|F)?|(C|F)\b)",
+    re.IGNORECASE,
+)
 _PRECIP_THRESHOLD_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(mm|cm|inches?|in)\b", re.IGNORECASE)
+_RAIN_RE = re.compile(r"\b(rain|rainfall|precipit\w*)\b", re.IGNORECASE)
+_SNOW_RE = re.compile(r"\b(snow|snowfall)\b", re.IGNORECASE)
+_TEMP_RE = re.compile(r"\b(temperature|hottest|coldest|warmest|highest\s+temp|lowest\s+temp)\b", re.IGNORECASE)
 
 
 def _detect_type_and_threshold(title: str) -> tuple[MarketType, float | None, Unit]:
     t = title.lower()
 
-    # Rain / precipitation
-    if any(kw in t for kw in ["rain", "rainfall", "precipitation", "precipitate"]):
-        m = _PRECIP_THRESHOLD_RE.search(t)
+    # Rain / precipitation (word-boundary to avoid "Uk-rain-e")
+    if _RAIN_RE.search(title):
+        m = _PRECIP_THRESHOLD_RE.search(title)
         if m:
             value = float(m.group(1))
             unit_raw = m.group(2).lower()
@@ -96,33 +120,33 @@ def _detect_type_and_threshold(title: str) -> tuple[MarketType, float | None, Un
         return "rain", None, ""
 
     # Snow
-    if any(kw in t for kw in ["snow", "snowfall"]):
-        m = _PRECIP_THRESHOLD_RE.search(t)
+    if _SNOW_RE.search(title):
+        m = _PRECIP_THRESHOLD_RE.search(title)
         if m:
-            return "snow", float(m.group(1)), m.group(2).lower().replace("inches", "in").replace("inch", "in")  # type: ignore
+            unit_raw = m.group(2).lower()
+            unit_norm: Unit = "mm" if unit_raw == "mm" else ("cm" if unit_raw == "cm" else "in")
+            return "snow", float(m.group(1)), unit_norm
         return "snow", None, ""
 
     # Temperature above/below
-    has_temp = any(kw in t for kw in ["temperature", "temp ", "hottest", "coldest", "warm", "cold"])
-    if has_temp or "high" in t or "low" in t:
-        # Determine direction
-        below_kw = ["below", "less than", "under", "lower than", "<", "coldest"]
-        above_kw = ["above", "more than", "over", "higher than", "greater than", ">", "hottest", "highest"]
+    if _TEMP_RE.search(title):
+        below_kw = ["below", "less than", "under", "lower than", "<", "coldest", "or below"]
 
-        # Find threshold value
+        # Threshold MUST have an explicit °/degrees/C/F marker to avoid
+        # picking up dates like "April 29" or year numbers.
         m = _TEMP_THRESHOLD_RE.search(title)
-        if m:
-            value = float(m.group(1))
-            unit_raw = (m.group(2) or "").lower()
-            unit: Unit = "F" if unit_raw.startswith("f") else "C"
-            # If no explicit unit, guess by value range
-            if not unit_raw:
-                unit = "F" if value > 50 else "C"
+        if not m:
+            return "unknown", None, ""
 
-            # Direction: default to above
-            if any(kw in t for kw in below_kw):
-                return "temp_below", value, unit
-            return "temp_above", value, unit
+        value = float(m.group(1))
+        # The unit is in one of three optional groups depending on which form matched
+        unit_raw = (m.group(2) or m.group(3) or m.group(4) or "").lower()
+        unit: Unit = "F" if unit_raw.startswith("f") else "C"
+
+        # Direction: default to above
+        if any(kw in t for kw in below_kw):
+            return "temp_below", value, unit
+        return "temp_above", value, unit
 
     return "unknown", None, ""
 

@@ -68,46 +68,62 @@ class GammaApiClient:
             params["active"] = "true"
         return await self._get("/markets", params)
 
-    async def search_markets(self, query: str) -> list[dict[str, Any]]:
-        return await self._get("/public-search", {"query": query})
+    async def search_markets(self, query: str) -> dict[str, Any]:
+        """Polymarket public search. Returns {events: [...], pagination: {...}}."""
+        return await self._get("/public-search", {"q": query})
 
     async def get_weather_markets(self, limit: int = 200) -> list[dict[str, Any]]:
-        """Get active weather markets via tag filtering.
+        """Discover active weather markets via /events endpoint.
 
-        Tries multiple known weather-related tag slugs; merges results.
+        Polymarket weather markets are grouped under events like
+        "Highest temperature in Seoul on April 17?" with multiple
+        sub-markets (one per threshold). We list all active events
+        and keep only those with a weather keyword in their title.
         """
+        REQUIRED_KEYWORDS = (
+            "temperature", " temp ", "hottest", "coldest", "warmest",
+            "rain", "rainfall", "precipit",
+            "snow", "snowfall",
+            "weather",
+        )
+
         results: dict[str, dict] = {}
-        # Known weather-related tag slugs on Polymarket
-        slugs = ["weather", "climate", "temperature"]
-        for slug in slugs:
+        # Iterate /events with offsets to cover everything (active markets
+        # change daily; cap at a few pages to keep things fast).
+        for offset in (0, 500, 1000):
             try:
                 params: dict[str, Any] = {
-                    "tag_slug": slug,
                     "active": "true",
                     "closed": "false",
-                    "limit": limit,
+                    "limit": 500,
+                    "offset": offset,
+                    "order": "endDate",
+                    "ascending": "true",
                 }
-                data = await self._get("/markets", params)
-                if isinstance(data, list):
-                    for m in data:
+                data = await self._get("/events", params)
+                if not isinstance(data, list) or not data:
+                    break
+                for ev in data:
+                    if ev.get("closed") or ev.get("archived"):
+                        continue
+                    ev_title_lower = (ev.get("title") or "").lower()
+                    if not any(kw in ev_title_lower for kw in REQUIRED_KEYWORDS):
+                        continue
+                    for m in ev.get("markets", []):
+                        if m.get("closed") or m.get("archived"):
+                            continue
                         cid = m.get("conditionId") or m.get("condition_id")
-                        if cid:
-                            results[cid] = m
+                        if not cid:
+                            continue
+                        m.setdefault("eventTitle", ev.get("title", ""))
+                        m.setdefault("eventSlug", ev.get("slug", ""))
+                        m.setdefault("endDate", m.get("endDate") or ev.get("endDate"))
+                        results[cid] = m
+                        if len(results) >= limit:
+                            return list(results.values())
             except Exception as exc:
-                logger.debug("get_weather_markets slug=%s failed: %s", slug, exc)
-
-        # Fallback: title-based search if nothing found
-        if not results:
-            for query in ("weather", "rain", "temperature", "snow"):
-                try:
-                    data = await self.search_markets(query)
-                    items = data if isinstance(data, list) else data.get("markets", [])
-                    for m in items:
-                        cid = m.get("conditionId") or m.get("condition_id")
-                        if cid:
-                            results[cid] = m
-                except Exception as exc:
-                    logger.debug("search_markets q=%s failed: %s", query, exc)
+                logger.debug("get_weather_markets offset=%d failed: %s", offset, exc)
+                break
 
         return list(results.values())
 

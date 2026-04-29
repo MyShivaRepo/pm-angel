@@ -7,7 +7,7 @@
     <section class="settings-section">
         <h2>Connexion Polymarket</h2>
         {% if has_credentials %}
-            <p class="text-success">Connecte a Polymarket</p>
+            <p class="text-success">Connecte (cle: <code>{{ pk_masked }}</code>, proxy: <code>{{ settings.proxy_wallet[:10] }}...{{ settings.proxy_wallet[-4:] }}</code>)</p>
             <details style="margin-top: 0.5rem;">
                 <summary class="text-muted" style="cursor: pointer; font-size: 0.85rem;">Reconfigurer</summary>
                 <div style="margin-top: 0.75rem;">
@@ -44,13 +44,15 @@
         <h2>Bot</h2>
         <div class="bot-controls">
             {% if bot_running %}
-                <button class="btn btn-danger" hx-post="/api/bot/stop" hx-swap="none"
+                <button class="btn btn-danger"
+                        hx-post="/api/bot/stop" hx-swap="none"
                         hx-on::after-request="location.reload()">
                     Arreter le bot
                 </button>
                 <span class="text-success" style="margin-left: 0.5rem;">Bot en cours d'execution</span>
             {% elif has_credentials %}
-                <button class="btn btn-primary" hx-post="/api/bot/start" hx-swap="none"
+                <button class="btn btn-primary"
+                        hx-post="/api/bot/start" hx-swap="none"
                         hx-on::after-request="location.reload()">
                     Demarrer le bot
                 </button>
@@ -61,20 +63,31 @@
         </div>
     </section>
 
-    <!-- Risk Parameters -->
+    <!-- Strategy parameters -->
     <section class="settings-section">
-        <h2>Parametres de risque</h2>
+        <h2>Parametres de strategie</h2>
         <form hx-post="/api/settings" hx-swap="none"
               hx-on::after-request="alert('Parametres sauvegardes')">
+            <label style="display:block; margin-bottom: 0.75rem;">
+                <span class="form-label">Villes surveillees (separees par virgules)</span>
+                <input type="text" name="cities" value="{{ settings.cities|join(', ') }}" class="input">
+                <span class="help-text">Disponibles : {{ all_cities|join(', ') }}</span>
+            </label>
+
             <div class="form-grid">
                 <label>
-                    Montant min par trade (USD)
-                    <input type="number" name="min_order_usd" value="{{ settings.min_order_usd }}"
+                    Edge minimum (%)
+                    <input type="number" name="min_edge_pct" value="{{ '%g'|format(settings.min_edge_pct * 100) }}"
+                           step="1" min="1" max="50" class="input">
+                </label>
+                <label>
+                    Pari min (USD)
+                    <input type="number" name="min_bet_usd" value="{{ settings.min_bet_usd }}"
                            step="0.5" min="1" class="input">
                 </label>
                 <label>
-                    Montant max par trade (USD)
-                    <input type="number" name="max_position_usd" value="{{ settings.max_position_usd }}"
+                    Pari max (USD)
+                    <input type="number" name="max_bet_usd" value="{{ settings.max_bet_usd }}"
                            step="1" min="1" class="input">
                 </label>
                 <label>
@@ -83,26 +96,16 @@
                            step="1" min="1" class="input">
                 </label>
                 <label>
-                    Perte journaliere max (USD)
-                    <input type="number" name="daily_loss_limit_usd" value="{{ settings.daily_loss_limit_usd }}"
+                    Cycle de scan (minutes)
+                    <input type="number" name="forecast_poll_minutes" value="{{ settings.forecast_poll_minutes }}"
                            step="1" min="1" class="input">
-                </label>
-                <label>
-                    Facteur de scaling
-                    <input type="number" name="position_scale_factor" value="{{ settings.position_scale_factor }}"
-                           step="0.01" min="0.01" max="1" class="input">
-                </label>
-                <label>
-                    Intervalle polling (sec)
-                    <input type="number" name="poll_interval_seconds" value="{{ settings.poll_interval_seconds }}"
-                           step="1" min="5" class="input">
                 </label>
             </div>
             <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Sauvegarder</button>
         </form>
         <div class="help-text" style="margin-top: 0.75rem;">
-            <p><strong>Montant par trade</strong> : le bot calcule d'abord <code>taille_trader_copie × scaling</code>, puis applique les limites min/max.</p>
-            <p>Exemple : trader copie mise $5000, scaling=0.01 → $50, borne a max=$20 → trade de $20.</p>
+            <p><strong>Edge minimum</strong> : ecart minimum entre la prevision officielle et le prix de marche pour declencher un pari (ex: 10% = parie si forecast 80% mais marche cote 70% ou moins).</p>
+            <p><strong>Cycle</strong> : frequence de scan des marches meteo (60 min recommande, marches resolvent quotidiennement).</p>
         </div>
     </section>
 </div>

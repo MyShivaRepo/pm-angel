@@ -2,10 +2,36 @@
 {% block content %}
 <div class="analysis">
     <h1>Analysis</h1>
-    <p class="help-text">Trades detectes chez les traders suivis. Le bot analyse ces opportunites avant de prendre position.</p>
+    <p class="help-text">
+        Decisions du bot avec leur justification. Le bot pari sur le cote sous-evalue
+        (edge > seuil) ou ignore le marche.
+    </p>
 
-    <div id="detected-trades" hx-get="/api/detected-trades" hx-trigger="load, every 10s" hx-swap="innerHTML">
-        {% include "partials/detected_trades.html" %}
+    <table class="bets-table">
+        <thead>
+            <tr>
+                <th>Marche</th>
+                <th>Prix YES</th>
+                <th>Prevision</th>
+                <th>Edge</th>
+                <th>Decision</th>
+                <th>Raison</th>
+                <th>Heure</th>
+            </tr>
+        </thead>
+        <tbody hx-get="/api/decisions/table"
+               hx-trigger="load, every 10s"
+               hx-swap="innerHTML">
+            <tr><td colspan="7" class="empty-state">Chargement...</td></tr>
+        </tbody>
+    </table>
+
+    <h2 style="margin-top: 2rem;">Journal du bot</h2>
+    <div class="log-container"
+         hx-get="/api/log"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+        <div class="log-empty">Chargement...</div>
     </div>
 </div>
 {% endblock %}

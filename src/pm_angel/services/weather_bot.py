@@ -158,6 +158,7 @@ class WeatherBot:
             if not cid:
                 continue
             title = m.get("question") or m.get("title") or ""
+            event_title = m.get("eventTitle") or ""
             slug = m.get("slug") or ""
             event_id = ""
             events = m.get("events") or []
@@ -168,7 +169,9 @@ class WeatherBot:
             yes_price, no_price = _parse_outcome_prices(m)
             yes_token, no_token = _parse_token_ids(m)
 
-            spec = parse(title, end_date)
+            # Combine event + market title to maximize parser hit rate
+            combined_title = f"{event_title} {title}".strip() if event_title else title
+            spec = parse(combined_title, end_date)
 
             # Filter: only configured cities
             if spec.city and self._settings.cities and spec.city not in self._settings.cities:

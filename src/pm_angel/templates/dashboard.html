@@ -17,26 +17,35 @@
             <div class="card-value">${{ "%.2f"|format(stats.positions_value) }}</div>
         </div>
         <div class="card">
-            <div class="card-label">PnL Total</div>
+            <div class="card-label">Positions actives</div>
+            <div class="card-value">{{ stats.active_count }}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">PnL total</div>
             <div class="card-value {% if stats.total_pnl >= 0 %}positive{% else %}negative{% endif %}">
-                ${{ "%.2f"|format(stats.total_pnl) }}
+                {% if stats.total_pnl >= 0 %}+{% endif %}${{ "%.2f"|format(stats.total_pnl) }}
             </div>
         </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Paris pris</h2>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <div id="sync-result"></div>
-            <button class="btn btn-secondary btn-sm"
-                    hx-post="/api/sync" hx-target="#sync-result" hx-swap="innerHTML">
-                Synchroniser
-            </button>
-        </div>
-    </div>
-
-    <div id="bets-table" hx-get="/api/bets/table" hx-trigger="load, every 5s" hx-swap="innerHTML">
-        {% include "partials/bets_table.html" %}
-    </div>
+    <h2 style="margin-top: 1.5rem;">Paris pris</h2>
+    <table class="bets-table">
+        <thead>
+            <tr>
+                <th>Nom du pari</th>
+                <th>Pari</th>
+                <th>Montant</th>
+                <th>Statut</th>
+                <th>Resultat ($)</th>
+                <th>Resultat (%)</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody hx-get="/api/positions/table"
+               hx-trigger="load, every 5s"
+               hx-swap="innerHTML">
+            <tr><td colspan="7" class="empty-state">Chargement...</td></tr>
+        </tbody>
+    </table>
 </div>
 {% endblock %}
