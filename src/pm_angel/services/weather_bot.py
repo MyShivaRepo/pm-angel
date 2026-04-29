@@ -84,6 +84,8 @@ class WeatherBot:
         self._task: asyncio.Task | None = None
         self._running = False
         self._active_markets: set[str] = set()  # condition_ids with active position
+        self._active_events: set[str] = set()   # event slugs with at least one active position
+        self._cycle_event_bets: set[str] = set()  # event slugs already bet during current cycle
 
     @property
     def is_running(self) -> bool:
@@ -132,8 +134,17 @@ class WeatherBot:
             result = await session.execute(
                 select(Position.condition_id).where(Position.status == "active").distinct()
             )
-            for cid in result.scalars().all():
+            cids = list(result.scalars().all())
+            for cid in cids:
                 self._active_markets.add(cid)
+            # Load corresponding event slugs from WeatherMarket for stronger dedup
+            if cids:
+                ev_result = await session.execute(
+                    select(WeatherMarket.event_id).where(WeatherMarket.condition_id.in_(cids))
+                )
+                for ev in ev_result.scalars().all():
+                    if ev:
+                        self._active_events.add(ev)
 
     async def run_once(self) -> dict:
         """Run a single tick on demand. Returns summary stats."""
@@ -148,6 +159,13 @@ class WeatherBot:
             return {"discovered": 0}
 
         decision_log.info("discover", f"{len(markets)} marches meteo decouverts")
+        # Reset per-cycle event lock (one bet per event per cycle)
+        self._cycle_event_bets = set()
+        # Group markets by event to compute the best opportunity per event
+        markets_by_event: dict[str, list[dict]] = {}
+        for m in markets:
+            ev_slug = m.get("eventSlug") or m.get("eventTitle") or m.get("conditionId", "")
+            markets_by_event.setdefault(ev_slug, []).append(m)
 
         n_parsed_ok = 0
         n_skipped = 0
@@ -160,10 +178,8 @@ class WeatherBot:
             title = m.get("question") or m.get("title") or ""
             event_title = m.get("eventTitle") or ""
             slug = m.get("slug") or ""
-            event_id = ""
-            events = m.get("events") or []
-            if events and isinstance(events, list):
-                event_id = str(events[0].get("id", ""))
+            # Use eventSlug as stable event identifier (unique across Polymarket)
+            event_id = m.get("eventSlug") or m.get("eventTitle") or ""
 
             end_date = _parse_end_date(m)
             yes_price, no_price = _parse_outcome_prices(m)
@@ -219,9 +235,17 @@ class WeatherBot:
             target_outcome = ""
             target_price = 0.0
 
+            ev_slug = m.get("eventSlug") or m.get("eventTitle") or ""
+
             if cid in self._active_markets:
                 decision_str = "SKIP"
                 reason = "Position deja active sur ce marche"
+            elif ev_slug and ev_slug in self._active_events:
+                decision_str = "SKIP"
+                reason = "Position deja active sur cet event"
+            elif ev_slug and ev_slug in self._cycle_event_bets:
+                decision_str = "SKIP"
+                reason = "Pari deja place sur cet event ce cycle"
             elif best_edge < min_edge:
                 decision_str = "SKIP"
                 reason = f"Edge {best_edge*100:.1f}% < seuil {min_edge*100:.0f}%"
@@ -255,11 +279,13 @@ class WeatherBot:
             position_id: int | None = None
             if decision_str != "SKIP" and target_token and self._clob:
                 try:
+                    neg_risk = bool(m.get("negRisk"))
                     decision_log.info("execute", f"Pari {target_outcome} ${amount:.2f} sur {title[:40]}")
                     result = await self._clob.place_market_order(
                         token_id=target_token,
                         amount_usd=amount,
                         side="BUY",
+                        neg_risk=neg_risk,
                     )
                     position_id = await self._save_position(
                         condition_id=cid, token_id=target_token,
@@ -268,6 +294,9 @@ class WeatherBot:
                         status="active",
                     )
                     self._active_markets.add(cid)
+                    if ev_slug:
+                        self._active_events.add(ev_slug)
+                        self._cycle_event_bets.add(ev_slug)
                     n_executed += 1
                     decision_log.success("execute", f"Pari pris: {target_outcome} ${amount:.2f} sur {title[:40]}")
                 except Exception as exc:
