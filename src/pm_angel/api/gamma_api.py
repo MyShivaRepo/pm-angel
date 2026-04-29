@@ -71,6 +71,46 @@ class GammaApiClient:
     async def search_markets(self, query: str) -> list[dict[str, Any]]:
         return await self._get("/public-search", {"query": query})
 
+    async def get_weather_markets(self, limit: int = 200) -> list[dict[str, Any]]:
+        """Get active weather markets via tag filtering.
+
+        Tries multiple known weather-related tag slugs; merges results.
+        """
+        results: dict[str, dict] = {}
+        # Known weather-related tag slugs on Polymarket
+        slugs = ["weather", "climate", "temperature"]
+        for slug in slugs:
+            try:
+                params: dict[str, Any] = {
+                    "tag_slug": slug,
+                    "active": "true",
+                    "closed": "false",
+                    "limit": limit,
+                }
+                data = await self._get("/markets", params)
+                if isinstance(data, list):
+                    for m in data:
+                        cid = m.get("conditionId") or m.get("condition_id")
+                        if cid:
+                            results[cid] = m
+            except Exception as exc:
+                logger.debug("get_weather_markets slug=%s failed: %s", slug, exc)
+
+        # Fallback: title-based search if nothing found
+        if not results:
+            for query in ("weather", "rain", "temperature", "snow"):
+                try:
+                    data = await self.search_markets(query)
+                    items = data if isinstance(data, list) else data.get("markets", [])
+                    for m in items:
+                        cid = m.get("conditionId") or m.get("condition_id")
+                        if cid:
+                            results[cid] = m
+                except Exception as exc:
+                    logger.debug("search_markets q=%s failed: %s", query, exc)
+
+        return list(results.values())
+
     async def get_public_profile(self, address: str) -> dict[str, Any]:
         return await self._get("/public-profile", {"address": address})
 
